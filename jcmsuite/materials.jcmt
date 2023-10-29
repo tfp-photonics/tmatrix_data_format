@@ -1,0 +1,34 @@
+<?
+for mat, er in enumerate(keys['epsilon']):
+    keys['permittivity'] = er
+    keys['mat_id'] = mat + 1
+    keys['mat_name'] = f'Material_{mat}'
+    ?>
+
+Material {
+  Name = "%(mat_name)s"
+  DomainId = %(mat_id)e
+  RelPermittivity = %(permittivity)e
+
+    <?
+    if 'mu' in keys:
+        keys['permeability'] = keys['mu'][mat]
+        ?>
+  RelPermeability = %(permeability)e
+    <?
+    ?>
+
+    <?
+    if 'chirality' in keys:
+      keys['relbipermittivity'] = 1j * keys['chirality'][mat]
+      keys['relbipermeability'] = -1j * keys['chirality'][mat]
+      ?>
+  RelBiPermittivity = %(relbipermittivity)e
+  RelBiPermeability = %(relbipermeability)e
+    <?
+    ?>
+
+}
+
+<?
+?>
