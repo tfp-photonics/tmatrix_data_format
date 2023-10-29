@@ -1,0 +1,28 @@
+Project {
+  InfoLevel = 1
+  StorageFormat = Pinboard
+  Electromagnetics {
+    TimeHarmonic {
+      Scattering {
+        FieldComponents = Electric
+        FourierModeRange = [0, %(degree_max)e]
+        Accuracy {
+          Precision = %(precision)e
+          Refinement {
+            MaxNumberSteps = %(max_refinements)e
+          }
+          FiniteElementDegree = %(fem_degree)e
+        }
+        PML {}
+      }
+    }
+  }
+}
+
+PostProcess {
+  MultipoleExpansion {
+    FieldBagPath = "project_results/fieldbag.jcm"
+    OutputFileName = "project_results/vsh.jcm"
+    MultipoleDegree = %(degree_max)e
+  }
+}
