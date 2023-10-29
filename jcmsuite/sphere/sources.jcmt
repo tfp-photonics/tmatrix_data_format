@@ -1,0 +1,25 @@
+<?
+for degree in range(1, keys['degree_max'] + 1):
+    for order in range(-degree, degree + 1):
+        for pol in 'MN':
+            keys['degree'] = degree
+            keys['order'] = order
+            keys['pol'] = pol
+            ?>
+
+SourceBag {
+  Source {
+    ElectricFieldStrength {
+      VectorSphericalWaveFunction {
+        Coefficient = 1
+        Lambda0 = %(lambda0)e
+        MultipoleDegree = %(degree)i
+        MultipoleOrder =  %(order)i
+        Type = %(pol)s
+      }
+    }
+  }
+}
+
+<?
+?>

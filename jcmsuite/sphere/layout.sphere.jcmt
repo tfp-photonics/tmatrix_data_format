@@ -1,0 +1,27 @@
+Layout2D {
+  CoordinateSystem = Cylindrical
+  UnitOfLength = %(uol)e
+  MeshOptions {
+    MaximumSideLength = %(maxsl)e
+  }
+  Objects {
+    Parallelogram {
+      Priority = -1
+      DomainId = 1
+      Width = %(domain_radius)e
+      Height = %(domain_z)e
+      Port = West
+      Boundary {
+        Class = Transparent
+      }
+    }
+    Circle {
+      DomainId = 2
+      Priority = 1
+      Radius = %(radius)e
+      MeshOptions {
+        MaximumSideLength = %(object_maxsl)e
+      }
+    }
+  }
+}
