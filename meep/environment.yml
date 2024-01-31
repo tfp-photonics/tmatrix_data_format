@@ -1,0 +1,18 @@
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - numpy
+  - scipy
+  - matplotlib
+  - pymeep=*=*mpich*
+  - h5py=*=*mpich*
+  - jax=0.4.8
+  - mpi4jax
+  - mpi4py
+  - autograd
+  - nlopt
+  - nomkl
+  - pip
+  - pip:
+      - treams
