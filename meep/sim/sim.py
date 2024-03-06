@@ -8,7 +8,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from config.config import Config
-from optimization.sim_jax_wrapper import SimJaxWrapper
+from t_computation.sim_jax_wrapper import SimJaxWrapper
 from sim.sim_data import SimData
 from sources.source_data import SourceData
 from utility.plot_lib import plot_im
@@ -178,7 +178,6 @@ def do_scattered_sim(
     if total_sim_res is None:
         total_sim_res = _do_sim(c=c, source_data=source_data, eps_grid=eps_grid)
         total_sim_res.to_hdf_scattered(path=c.path, id=id)
-
     sca_sim_res = SimData(
         e=total_sim_res.e - sim_res_inc.e,
         b=total_sim_res.b - sim_res_inc.b,

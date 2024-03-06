@@ -103,7 +103,7 @@ def get_inc_coefs(
             poltype="parity",
         )
         inc_coefs[ii] = np.array(pw.expand(treams.SphericalWaveBasis.default(c.l_max)))
-
+    print('in inc coe', inc_coefs.shape)
     return inc_coefs
 
 

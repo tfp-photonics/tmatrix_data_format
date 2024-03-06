@@ -31,7 +31,7 @@ def get_epsgrid_from_geometric_objects(
                 arr=eps,
                 size=size,
                 position=np.array([*object.center]),
-                normal=np.array([*object.axis]),
+                ormal=np.array([*object.axis]),
                 radius=object.radius,
                 height=object.height,
                 value=object.material.epsilon_diag[0],

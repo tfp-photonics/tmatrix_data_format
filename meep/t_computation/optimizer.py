@@ -11,24 +11,14 @@ from numpy.typing import NDArray
 from config.config import Config
 from config.loss_func import get_default_loss_func
 from geometry.geometry_data import GeometryData
-from optimization.forward_pass import calc_T
-from optimization.loss_data import LossData
-from optimization.parallelize import end_parallel, start_parallel
-from optimization.progress_data import ProgressData
+from t_computation.scat import core_calc_T
+from t_computation.loss_data import LossData
+from t_computation.parallelize import end_parallel, start_parallel
+from t_computation.progress_data import ProgressData
 
 COMM = MPI.COMM_WORLD
 
 
-def calculate_T(c: Config) -> NDArray:
-    geo_dat = get_start_geometry(c)
-    eps_grid = jnp.asarray(geo_dat.eps_grid, dtype=float)
-    master_ids, group_id, sim_id_range = start_parallel(
-        n_sim=c.sim_amount, processes_per_group=c.cpu_cores_per_simulation
-    )
-    t_dat = calc_T(c, master_ids, group_id, sim_id_range, eps_grid)
-    t_dat.to_hdf(path=c.path, it=0)
-    end_parallel()
-    return t_dat.t
 
 
 def optimize(
@@ -106,7 +96,7 @@ def get_loss_func_of_eps(
     loss_func_of_T: Callable[[NDArray], float],
 ) -> float:
     def _loss_func(eps_grid: NDArray):
-        t_dat = calc_T(c, master_ids, group_id, sim_id_range, eps_grid)
+        t_dat = core_calc_T(c, master_ids, group_id, sim_id_range, eps_grid)
         t_dat.to_hdf(path=c.path, it=it)
         # plot_treams_vs_me(path=c.path, it=it, l_max=c.l_max, f_cen=c.fcen)
         # plot_jcm_vs_me(path=c.path, it=it)
