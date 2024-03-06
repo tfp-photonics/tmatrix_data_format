@@ -30,6 +30,11 @@ class Config(PersitableDataClass):
     f_max: float = 1.1
     f_src: float = 1.0
     df_src: float = 0.2
+    shape : list[str] | str = 'sphere'
+    
+    params : list[dict] | dict = field(default_factory=lambda: {"radius":0.5}) 
+    material: list[complex] | complex = 1.15
+    positions: list[float] = field(default_factory=lambda: [0, 0, 0])
     start_geometry: list[mp.GeometricObject] | NDArray = field(
         default_factory=lambda: [
             mp.Sphere(
@@ -45,6 +50,7 @@ class Config(PersitableDataClass):
     opt_eps_max: float = None
 
     def __post_init__(self):
+        print('postint', self.start_geometry)
         Path(self.path).mkdir(parents=True, exist_ok=True)
         object.__setattr__(self, "object_size", np.asarray(self.object_size))
         if isinstance(self.start_geometry, list):

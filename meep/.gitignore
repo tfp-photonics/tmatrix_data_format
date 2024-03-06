@@ -1,8 +1,1 @@
-out/
-papers/
-tmat_data_format/tmatrix_data_format_repo
-notes.txt
-*.png
-*.pyc
-*.pyo
-.vscode
+meep_input/
