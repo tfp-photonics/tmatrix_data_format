@@ -174,6 +174,40 @@ def jcm_defaultmodes(lmax):
     ).T
     return res[0], res[1], translate_pols(res[2], "parity")
 
+def jcm_pol_reorder(tmats, pols, pols_inc, lmax):
+    """
+    Default jcm order is magnetic/electric in parity basis 
+    Modify to reverse order
+
+    Args:
+        lmax (int): maximal degree
+        tmats (array): T-matrices
+        pols (array): polarization array of scattered modes
+        pols_inc (array): polarization array of incident modes
+
+
+    Returns:
+        Tmatrices and polarizations of incident and scattered modes        
+    """
+    if (pols[0] == "magnetic"):
+        reorder  = [
+                    2 * (l * l + l - 1 + m) + 1 - p
+                    for l in range(1, lmax + 1)
+                    for m in range(-l, l + 1)
+                    for p in range(2)
+                ]
+        if tmats.ndim == 2:
+            tmats = np.expand_dims(tmats, axis=0)
+        for i, t in enumerate(tmats):
+            ti = t[:, reorder]
+            tmats[i][:, :] = ti[reorder, :]
+    pols_new = np.zeros_like(pols)
+    pols_inc_new = np.zeros_like(pols_inc)
+    pols_new[::2] = pols[1::2]
+    pols_new[1::2] = pols[::2]
+    pols_inc_new[1::2] = pols_inc[::2]
+    pols_inc_new[::2] = pols_inc[1::2]
+    return tmats, pols_new, pols_inc_new
 
 def translate_pols(pols, poltype):
     if poltype == "parity":

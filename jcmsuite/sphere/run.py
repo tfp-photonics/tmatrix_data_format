@@ -56,6 +56,7 @@ def run():
     tmats, _, ls, ms, pols = tmatrix_tools.extract_tmatrix_jcm(results)
 
     ls_inc, ms_inc, pols_inc = tmatrix_tools.jcm_defaultmodes(keys["degree_max"])
+    tmats, pols, pols_inc = tmatrix_tools.jcm_pol_reorder(tmats, pols, pols_inc, keys["degree_max"])
     if np.all(ls == ls_inc) and np.all(ms == ms_inc) and np.all(pols == pols_inc):
         modes_inc = None
     else:
