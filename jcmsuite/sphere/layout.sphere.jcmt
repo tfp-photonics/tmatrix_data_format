@@ -2,7 +2,7 @@ Layout2D {
   CoordinateSystem = Cylindrical
   UnitOfLength = %(uol)e
   MeshOptions {
-    MaximumSideLength = %(maxsl)e
+    MaximumSideLength = %(maximum_sidelength_domain)e
   }
   Objects {
     Parallelogram {
@@ -20,7 +20,7 @@ Layout2D {
       Priority = 1
       Radius = %(radius)e
       MeshOptions {
-        MaximumSideLength = %(object_maxsl)e
+        MaximumSideLength = %(maximum_sidelength_object)e
       }
     }
   }

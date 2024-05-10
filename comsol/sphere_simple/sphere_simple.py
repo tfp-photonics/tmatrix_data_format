@@ -2,12 +2,10 @@
 
 import os
 import re
-
 import h5py
 import numpy as np
 import sys
 sys.path.append('../..')
-
 sys.path.append('../../..')
 import tmatrix_tools as tools
 def run():
@@ -19,7 +17,6 @@ def run():
     epsilon = [1, 4]
     mu = [1, 1]
     kappa = [0., 0.]
-
     (
         tmats,
         _,
@@ -49,37 +46,61 @@ def run():
             fobj,
             tmatrices=tmats,
             name="Sphere",
-            description="A simple example.",
-            keywords="czinfinity,mirrorxyz,passive",
+            description=f"A simple example of a single sphere at {len(freqs)} frequencies.",
+            keywords="czinfinity,mirrorxyz, passive, reciprocal",
             freqs=freqs,
             ftype="frequency",
             funit=funit,
             modes=(ls, ms, pols),
             modes_inc=modes_inc,
-            format_version="v0.0.1-5-g7a6c03f",
+            format_version="draft",
         )
-        fobj.create_group("materials")
-        embedding = True
-        for name, description, keywords, epsilon, mu, kappa in zip(
+
+        for index, (name, description, keywords, epsilon, mu, kappa) in enumerate(zip(
             material_names,
             material_descriptions,
             material_keywords,
             epsilon,
-            mu,
-            kappa,
-        ):
-            fobj.create_group(f"materials/{name.lower()}")
-            tools.biisotropic_material(
-                fobj[f"materials/{name.lower()}"],
-                name=name,
-                description=description,
-                keywords=keywords,
-                epsilon=epsilon,
-                mu=mu,
-                kappa=kappa,
-                embedding=embedding,
-            )
-            embedding = False
+            mu, 
+            kappa
+        )):
+            if index == 0:
+                fobj.create_group(f"embedding")
+                tools.isotropic_material(
+                    fobj[f"embedding"],
+                    name=name,
+                    description=description,
+                    keywords=keywords,
+                    epsilon=epsilon,
+                    mu=mu, 
+                    kappa=kappa
+                )
+            else:
+                if len(epsilon) == 2:
+                    scatname = "scatterer"
+                else:
+                    scatname = f"scatterer_{index}"
+                fobj.create_group(f"{scatname}")
+                fobj.create_group(f"{scatname}/material")
+                tools.isotropic_material(
+                    fobj[f"{scatname}/material"],
+                    name=name,
+                    description=description,
+                    keywords=keywords,
+                    epsilon=epsilon,
+                    mu=mu
+                )
+        fobj.create_group("computation/files")
+        fobj.create_group(f"{scatname}/geometry")
+        fobj[f"{scatname}/geometry"].attrs["unit"] = "nm"
+        tools.geometry_shape(
+            fobj[f"{scatname}/geometry"],
+            shape="sphere",
+            params="radius",
+            meshfile=None,
+            lunit="nm",
+            working_dir=working_dir,
+        )
         fobj.create_group("computation/files")
         tools.computation_data(
             fobj["computation"],

@@ -1,13 +1,13 @@
-"""Template for a T-matrix calculation with JCMsuite at the example of a sphere."""
-
+"""Template for a T-matrix calculation with JCMsuite at the example of a cylinder."""
+# -> set your JCMROOT installation directory
+import sys
 import os
-
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 import h5py
 import jcmwave
 import numpy as np
-
+import meshgen as meshparser
 import tmatrix_tools
-
 
 def run():
     # Setup
@@ -17,28 +17,32 @@ def run():
     keys = {
         "uol": 1e-9,  # unit of length (1 = m, 1e-9 = nm)
         "epsilon": [1, 6.25],
+        "mu": [1, 1],
         "radius": 250,
         "height": 300,
+        "degree_max": 4
+        }
+    
+    keys_method = {     
         "domain_radius": 275,
-        "domain_z": 350,
-        "degree_max": 4,
-        "maxsl": 15,
-        "object_maxsl": 6,
+        "domain_z": 350,           
+        "maximum_sidelength_domain": 15,
+        "maximum_sidelength_object": 6,
         "precision": 1e-7,
         "max_refinements": 3,
         "fem_degree": 2,
     }
+    keys.update(keys_method)
     uof = 1e12  # unit of frequency (1 = Hz, 1e12 = THz)
     freqs = np.linspace(240, 400, 101)
     c0 = 299792458 / (uof * keys["uol"])  # speed of light
-
-    material_names = ["Vacuum", "Titanium dioxide"]
+    material_names = ["Vacuum, Air", "TiO2, Titanium dioxide"]
     material_descriptions = ["", "A constant refractive index of 2.5 is used."]
     material_keywords = ["non-dispersive", "non-dispersive"]
 
     jcmwave.geo(".", keys, jcmt_pattern=jcmt_pattern, working_dir=working_dir)
     jcmwave.daemon.shutdown()  # Make sure no daemon is running
-    jcmwave.daemon.add_workstation(Multiplicity=6)
+    jcmwave.daemon.add_workstation(Multiplicity=10) 
 
     jobids = []
     for i, freq in enumerate(freqs):
@@ -70,7 +74,7 @@ def run():
                 f"A simple cylinder with {keys['radius']} nm radius"
                 f" and {keys['height']} nm height."
             ),
-            keywords="czinfinity,mirrorxyz,passive",
+            keywords="czinfinity,mirrorxyz,passive, reciprocal",
             freqs=freqs,
             ftype="frequency",
             funit=tmatrix_tools.FREQUENCIES[uof],
@@ -78,30 +82,45 @@ def run():
             modes_inc=modes_inc,
             format_version="draft",
         )
-        fobj.create_group("materials")
-        embedding = True
-        for name, description, keywords, epsilon in zip(
+        for index, (name, description, keywords, epsilon, mu) in enumerate(zip(
             material_names,
             material_descriptions,
             material_keywords,
             keys["epsilon"],
-        ):
-            fobj.create_group(f"materials/{name.lower()}")
-            tmatrix_tools.isotropic_material(
-                fobj[f"materials/{name.lower()}"],
-                name=name,
-                description=description,
-                keywords=keywords,
-                epsilon=epsilon,
-                embedding=embedding,
-            )
-            embedding = False
+            keys["mu"]
+        )):
+            if index == 0:
+                fobj.create_group(f"embedding")
+                tmatrix_tools.isotropic_material(
+                    fobj[f"embedding"],
+                    name=name,
+                    description=description,
+                    keywords=keywords,
+                    epsilon=epsilon,
+                    mu=mu
+                )
+            else:
+                if len(keys["epsilon"]) == 2:
+                    scatname = "scatterer"
+                else:
+                    scatname = f"scatterer_{index}"
+                fobj.create_group(f"{scatname}")
+                fobj.create_group(f"{scatname}/material")
+                tmatrix_tools.isotropic_material(
+                    fobj[f"{scatname}/material"],
+                    name=name,
+                    description=description,
+                    keywords=keywords,
+                    epsilon=epsilon,
+                    mu=mu
+                )
         fobj.create_group("computation/files")
         tmatrix_tools.computation_data(
             fobj["computation"],
             name="JCMsuite",
-            description="Using the built-in post-process 'MultipoleExpansion'",
-            keywords="FEM",
+            description="Using the built-in post-process 'MultipoleExpansion'. Rotationally symmetric 3D problem is computed in 2D",
+            method="FEM, Finite Element Method",
+            keys=keys_method,
             program_version="jcmsuite=" + jcmwave.__private.version,
             meshfile=os.path.join(working_dir, "grid.jcm"),
             lunit=tmatrix_tools.LENGTHS[keys["uol"]],
@@ -113,15 +132,32 @@ def run():
         )
         with open(__file__, "r") as scriptfile:
             fobj[f"computation/files/{os.path.basename(__file__)}"] = scriptfile.read()
-        fobj.create_group("geometry")
+        with open(meshparser.__file__, "r") as scriptfile:
+            fobj[f"computation/files/{os.path.basename(meshparser.__file__)}"] = scriptfile.read()
+
+
+        fobj.create_group(f"{scatname}/geometry")
+        mesh = meshparser.Mesh(
+            {
+                domain: domain.tag
+                for domain in meshparser.read(
+                    os.path.join(working_dir, "grid.jcm")
+                ).domains
+                if domain.tag > 1 and domain.dim == 2 # change to 3 for 3D
+            }
+        )
+        # print(mesh)
+        fobj[f"{scatname}/geometry"].attrs["unit"] = tmatrix_tools.LENGTHS[keys["uol"]]
         tmatrix_tools.geometry_shape(
-            fobj["geometry"],
+            fobj[f"{scatname}/geometry"],
             shape="cylinder",
             params=keys,
+            meshfile=mesh,
             lunit=tmatrix_tools.LENGTHS[keys["uol"]],
             working_dir=working_dir,
         )
-        fobj["mesh.jcm"] = h5py.SoftLink("/geometry/grid.jcm")
+        fobj["mesh.msh"] = h5py.SoftLink("/computation/mesh.msh")
+
 
 
 if __name__ == "__main__":

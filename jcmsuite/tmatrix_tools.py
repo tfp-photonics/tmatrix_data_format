@@ -2,13 +2,12 @@ import io
 import os
 import re
 import sys
-import uuid
 
 import h5py
 import numpy as np
 
 try:
-    import meshparser
+    import meshgen as meshparser
 except ImportError as _err:
     meshparser = _err
 
@@ -84,84 +83,6 @@ FREQUENCIES = {
     1e21: "ZHz",
     1e24: "YHz",
 }
-
-
-def _comsol_table_names(line):
-    line = line.strip()
-    while line.startswith("%"):
-        line = line[1:]
-        line = line.strip()
-    names = line.split(",")
-    if len(names) > 1:
-        return names
-    names = re.split(r"\s+(?!\()", line)
-    dct = {name: i for i, name in enumerate(names)}
-    dct.setdefault("l_out", dct["l_in"])
-    dct.setdefault("m_out", dct["m_in"])
-    return dct
-
-
-def _index_or_append(lst, val):
-    try:
-        return lst.index(val)
-    except ValueError:
-        lst.append(val)
-        return len(lst) - 1
-
-
-def _comsol_table(fobj):
-    lm_out = []
-    lmp_in = []
-    params = []
-    vals = []
-    prev = header = sep = None
-    special_names = ("l_out", "m_out", "l_in", "m_in", "p_in", "am (1)", "ap (1)")
-    for line in fobj:
-        if line.startswith("%"):
-            prev = line
-            continue
-        if header is None:
-            header = _comsol_table_names(prev)
-            if len(line.split(",")) > 1:
-                sep = ","
-        line = line.split(sep)
-        mode = tuple(int(line[header[k]]) for k in special_names[:5])
-        out = _index_or_append(lm_out, mode[:2])
-        in_ = _index_or_append(lmp_in, mode[2:])
-        param = tuple(line[v] for k, v in header.items() if k not in special_names)
-        idx = _index_or_append(params, param)
-        vals.append(
-            (
-                idx,
-                out,
-                in_,
-                complex(line[header["am (1)"]].replace("i", "j")),
-                complex(line[header["ap (1)"]].replace("i", "j")),
-            )
-        )
-    res = np.zeros((len(params), len(lm_out) * 2, len(lmp_in)), complex)
-    firstpol = (lmp_in[0][2] + 1) // 2
-    for i, j, k, am, ap in vals:
-        res[i, 2 * j + 1 - firstpol, k] = ap
-        res[i, 2 * j + firstpol, k] = am
-    p_out = np.array(
-        translate_pols(
-            [(firstpol + i) % 2 for _ in lm_out for i in range(2)], "helicity"
-        )
-    )
-    l_out, m_out = map(np.asarray, zip(*(i for i in lm_out for _ in range(2))))
-    l_in, m_in, p_in = map(np.asarray, zip(*lmp_in))
-    p_in = np.array(translate_pols(p_in, "helicity"))
-    params = dict(zip((k for k in header if k not in special_names), zip(*params)))
-    return res, None, l_out, m_out, p_out, l_in, m_in, p_in, params
-
-
-def extract_tmatrix_comsol(fobj):
-    if isinstance(fobj, str):
-        with open(fobj) as newfobj:
-            return _comsol_table(newfobj)
-    return _comsol_table(fobj)
-
 
 def jcm_defaultmodes(lmax):
     res = np.array(
@@ -313,9 +234,6 @@ def base_data(
 
     _name_descr_kw(fobj, name, description, keywords)
 
-    fobj["uuid"] = np.void(uuid.uuid4().bytes)
-    fobj["uuid"].attrs["version"] = 4
-
     if ftype not in (
         "frequency",
         "angular_frequency",
@@ -370,7 +288,7 @@ def isotropic_material(
     mu=None,
     embedding=False,
 ):
-    _check_name(fobj.parent, "/materials")
+    # _check_name(fobj.parent, "/scatterer/material")
 
     _name_descr_kw(fobj, name, description, keywords)
     if index is impedance is epsilon is mu is None:
@@ -535,7 +453,9 @@ def computation_data(
     name="",
     description="",
     keywords="",
+    method="",
     program_version="",
+    keys="",
     meshfile=None,
     lunit="m",
     working_dir=".",
@@ -543,11 +463,17 @@ def computation_data(
     _check_name(fobj, "/computation")
     _name_descr_kw(fobj, name, description, keywords)
     fobj.attrs["software"] = program_version
+    if "method"!="":
+        fobj.attrs["method"] = method
+    fobj.create_group("method_parameters")
+    for key in keys:
+        fobj["method_parameters"][f"{key}"] = np.asarray(keys[key])
     if meshfile is not None:
         mesh_data(fobj, meshfile, lunit)
         with open(os.path.join(working_dir, meshfile), "rb") as fobj_mesh:
             fobj[f"files/{os.path.split(meshfile)[1]}"] = np.void(fobj_mesh.read())
-
+    with open(__file__, "r") as scriptfile:
+        fobj[f"files/{os.path.basename(__file__)}"] = scriptfile.read()
 
 def jcm_files(fobj, jcmt_pattern=None, working_dir="."):
     _check_name(fobj, "/computation")
@@ -579,6 +505,7 @@ GEOMETRY_PARAMS = {
     "torus": ("major_radius", "minor_radius"),
     "cube": ("length",),
     "rectangular_cuboid": ("lengthx", "lengthy", "lengthz"),
+     "helix": ("radius_helix", "radius_wire", "number_turns", "pitch")
 }
 
 
@@ -594,7 +521,6 @@ def geometry_shape(
     lunit="m",
     working_dir=".",
 ):
-    _check_name(fobj, "/geometry", False)
 
     _name_descr_kw(fobj, name, description, keywords)
     for param in GEOMETRY_PARAMS[shape]:
@@ -605,3 +531,4 @@ def geometry_shape(
         if isinstance(meshfile, str):
             with open(os.path.join(working_dir, meshfile), "rb") as fobj_mesh:
                 fobj[os.path.split(meshfile)[1]] = np.void(fobj_mesh.read())
+
