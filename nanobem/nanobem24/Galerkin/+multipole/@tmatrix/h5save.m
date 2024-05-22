@@ -1,4 +1,4 @@
-function h5save( obj, fout, varargin )
+function h5save( obj, fout, info )
 %  H5SAVE - Save T-matrices to file.
 %
 %  Usage for obj = multipole.tmatrix :
@@ -6,95 +6,133 @@ function h5save( obj, fout, varargin )
 %  Input
 %    fout     :  output file
 %    info     :  additional information, see tmatrix.h5info
-
-%  set up parser
-p = inputParser;
-p.KeepUnmatched = true;
-addOptional( p, 'info', multipole.h5info( varargin{ : } ) );
-%  parse input
-parse( p, varargin{ : } );
-
 %  open output file
 if isfile( fout ),  delete( sprintf( '%s', fout ) );  end
 fid = H5F.create( fout );
-
-%  write UUID to H5 file
-id = matlab.lang.internal.uuid();
-h5create( fout, '/uuid', 1, 'DataType', 'string' );
-h5write( fout, '/uuid', id );
-%  write name and description
-info = p.Results.info;
-for name = [ "name", "description" ]
+% %  write name and description
+for name = [ "name", "description", "keywords" ]
   if info.( name ) ~= ""
-    h5writeatt( fout, '/', name, info.( name ) );  
+    h5writeatt( fout, '/', name, char(info.( name )) );  
   end
 end
-%  additional information
-h5writeatt( fout, '/', 'created_with',  ...
-  "Matlab " + convertCharsToStrings( version( '-release' ) ) );
-%  storage format version
-[ v1, v2, v3 ] = H5.get_libversion();
-ver = [ num2str( v1 ), '.', num2str( v2 ), '.', num2str( v3 ) ];
-h5writeatt( fout, '/', 'storage_format_version', convertCharsToStrings( ver ) );
 
 %  write wavenumber to H5 file
-k0 = vertcat( obj.k0 );
-h5create( fout, '/angular_vacuum_wavenumber', numel( k0 ) );
-h5write( fout, '/angular_vacuum_wavenumber', k0 );
-h5writeatt( fout, '/angular_vacuum_wavenumber', 'unit', "nm^{-1}" );
-%  write T-matrix data
-h5complex_write( fid, 'tmatrix', full( convert( obj, 'to_h5' ) ) );
+k0 = squeeze(vertcat( obj.k0 ));
 
+if size(k0, 1)
+    h5create( fout, '/angular_vacuum_wavenumber', size( k0 ) );
+    h5write( fout, '/angular_vacuum_wavenumber', k0 );
+    h5writeatt( fout, '/angular_vacuum_wavenumber', 'unit', char("nm^{-1}") );
+end
 %  permeabilities and permittivities
 mat = obj( 1 ).solver.mat;
 mu  = arrayfun( @( x ) x.mu ( k0 ), mat, 'uniform', 0 );
 eps = arrayfun( @( x ) x.eps( k0 ), mat, 'uniform', 0 );
-%  group name for materials
-if info.matgroupname == ""
-  info.matgroupname = arrayfun( @( i )  ...
-    string( sprintf( 'Material%i', i ) ), 1 : numel( mat ), 'uniform', 1 );
-end
+
 %  write materials
 plist = 'H5P_DEFAULT';
-gid1 = H5G.create( fid, 'materials', plist, plist, plist );
+gide = H5G.create( fid, 'embedding', plist, plist, plist );
 for i = 1 : numel( mat )
   %  write permeability and permittivity to material group
-  gid2 = H5G.create( gid1, info.matgroupname( i ), plist, plist, plist );
-  h5complex_write( gid2, 'relative_permeability',  mu{ i } );
-  h5complex_write( gid2, 'relative_permittivity', eps{ i } );
-  close( gid2 );
-  %  write attributes to material group
-  name = "/materials/" + info.matgroupname( i );
-  if ~isempty( info.matname )
-    h5writeatt( fout, name, 'name', info.matname( i ) );
-  end
-  if ~isempty( info.matdescription )
-    h5writeatt( fout, name, 'description', info.matdescription( i ) );
+  if i == 1  
+    h5complex_write( gide, 'relative_permeability',  mu{ i } );
+    h5complex_write( gide, 'relative_permittivity', eps{ i } );
+  else
+    if numel( mat ) == 2
+        grname = '/scatterer';
+        gid1 = H5G.create( fid, grname, plist, plist, plist );
+    else
+        grname = compose('/scatterer_%d', i);
+        gid1 = H5G.create( fid, grname, plist, plist, plist );
+    end
+    gid2 = H5G.create(fid,  append(grname,'/material'), plist, plist, plist );
+    h5complex_write( gid2, 'relative_permeability',  mu{ i } );
+    h5complex_write( gid2, 'relative_permittivity', eps{ i } );
+    
+%     %  write attributes to material group
+    if ~isempty( info.matname )
+    h5writeatt( fout, append(grname,'/material'), 'name', char(info.matname( i )) );
+    end
+    if ~isempty( info.matdescription )
+    h5writeatt( fout, append(grname,'/material'), 'description', char(info.matdescription( i )) );
+    end
+    H5G.close( gid2 );
+    
   end
 end
+H5G.close(gide);
+% %  write geometry
+if ~isempty( info.tau ),  h5geometry_write( fout, fid, grname, info );  end
 %  close group identifier
-close( gid1 );
-%  create soft link to embedding medium
-name = "/materials/" + info.matgroupname( obj( 1 ).solver.imat );
-H5L.create_soft( name, fid, 'embedding', plist, plist );
 
+close( gid1 );
 %  table of spherical degrees and orders
 tab = obj( 1 ).solver.tab;
 %  write angular degrees 
 n = numel( tab.l );
+m = int64( repelem(tab.m, 2) );
+l = int64( repelem(tab.l, 2) );
 h5create( fout, '/modes/l', 2 * n, 'DataType', 'int64' );
-h5write( fout, '/modes/l', int64( [ tab.l; tab.l ] ) );
+h5write( fout, '/modes/l', l );
 %  write angular orders 
 h5create( fout, '/modes/m', 2 * n, 'DataType', 'int64' );
-h5write( fout, '/modes/m', int64( [ tab.m; tab.m ] ) );
+h5write( fout, '/modes/m', m );
 %  write polarization
-pol = repmat( [ "tm", "te" ], n, 1 );
+pol = repmat( [ "electric", "magnetic" ], 1, n );
 h5create( fout, '/modes/polarization', 2 * n, 'DataType', 'string' );
 h5write( fout, '/modes/polarization', pol( : ) );
 
+%  write T-matrix data
+%  change ordering to electric/magnetic
+obj = convert( obj, 'to_h5' );
+te = find( pol == "te" | pol == "magnetic" );
+tm = find( pol == "tm" | pol == "electric" );
+[ ~, ind ] = ismember( [ l( te ), m( te ) ], [ l( tm ), m( tm ) ], 'rows' ); 
+te = te( ind );
+if ndims(full(obj)) == 2
+    data = zeros(size(full(obj), 1), size(full(obj), 2), 1);
+else
+    data = zeros(size(full(obj)));
+end
+for i = 1 : numel( obj )
+  data( tm, tm, i ) = obj( i ).aa ;
+  data( tm, te, i ) = obj( i ).ab;
+  data( te, tm, i ) = obj( i ).ba;
+  data( te, te, i ) = obj( i ).bb;
+end
+h5complex_write( fid, 'tmatrix', data);
+
 %  write software
-H5G.close( H5G.create( fid, 'computation', plist, plist, plist ) );
-h5writeatt( fout, '/computation', 'software', "nanobem24" );
+H5G.create( fid, '/computation', plist, plist, plist);
+[ v1, v2, v3 ] = H5.get_libversion();
+ver = [ num2str( v1 ), '.', num2str( v2 ), '.', num2str( v3 ) ];
+software = append("nanobem24, ", "Matlab=" ,convertCharsToStrings( version( '-release' )), ", hdf5=",char(ver));
+h5writeatt( fout, '/computation', 'software', char(software) );
+h5writeatt( fout, '/computation', 'method', char("BEM, Boundary Element Method"));
+
+%write main script
+stack = dbstack('-completenames');
+if length(stack) < 2
+    error('This script must be run from another script.');
+end
+sourceScriptPath = stack(2).file;
+[~, sourceScriptName, ext] = fileparts(sourceScriptPath);
+
+gfiles = '/computation/files';
+fileID = fopen(sourceScriptPath, 'r');
+if fileID == -1
+    error('Could not open source script file.');
+end
+source_script = fread(fileID, '*char')'; 
+source_script = string(source_script);
+fclose(fileID);
+
+gid = H5G.create(fid, gfiles, 'H5P_DEFAULT', 'H5P_DEFAULT', 'H5P_DEFAULT');
+H5G.close(gid);
+dname = append(gfiles, '/', sourceScriptName, ext);
+h5create(fout, dname, size(source_script), 'Datatype', 'string');
+h5write(fout, dname, source_script); 
+
 %  write contents of additional files
 for i = 1 : numel( info.files )
   %  read file
@@ -102,11 +140,21 @@ for i = 1 : numel( info.files )
   str = convertCharsToStrings( fscanf( finp, '%c' ) );
   fclose( finp );
   %  write contents to H5 file
-  name = sprintf( '/computation/file%i', i );
+  name = sprintf( '/computation/files/%i', i );
   h5create( fout, name, 1, 'DataType', 'string' );
   h5write( fout, name, str );
 end
-%  write geometry
-if ~isempty( info.tau ),  h5geometry_write( fout, fid, info );  end
-%  close file
+
+gmt = '/computation/method_parameters/';
+gid = H5G.create(fid, gmt, 'H5P_DEFAULT', 'H5P_DEFAULT', 'H5P_DEFAULT');
+fields = fieldnames(info.method_parameters);
+for j = 1:numel(fields)
+    fname = fields{j};
+    fdata = info.method_parameters.(fname);
+    dataset = [append(gmt, fname)];
+    h5create(fout, dataset, size(fdata), 'Datatype', class(fdata));
+    h5write(fout, dataset, fdata); 
+end
+H5G.close(gid);
+% %  close file;
 H5F.close( fid );
