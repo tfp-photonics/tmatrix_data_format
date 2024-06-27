@@ -36,19 +36,22 @@ sol.b = b;
 %    shift  -  shift origin of multipole expansion
 [ e, h ] = farfields( sol, dir );
 [ e, h ] = farfields( sol, dir, 'shift', shift );
-%  scattering and extinction cross section
+%  scattering and extinction power, cext is divided by incoming power
 csca = scattering( sol );
-cext = extinction( sol );
-%  optical force in pN
-f = optforce( sol );
+cext = extinction( sol );    
+%  scattering power for user-defined detector
+%    pinfty   -  face-vertex structure for detector
+csca = scattering( sol, 'pinfty', pinfty );
+%  optical force in pN and torque in pN×nm
+[ f, n ] = optforce( sol );
 %  re-use auxiliary data for multiple calls
-[ f, data ] = optforce( sol );
-f = optforce( sol. data );
+[ f, n, data ] = optforce( sol );
+[ f, n ] = optforce( sol. data );
 
 %% Examples
 %
 % * <matlab:edit('demomulti02') demomulti02.m> |-| T-matrices for TiO2
 % nanodisk and multiple wavelengths.
 %
-% Copyright 2023 Ulrich Hohenester
+% Copyright 2024 Ulrich Hohenester
 

@@ -26,7 +26,7 @@ tsolver.tab = tab;
 
 %% Methods
 %
-% The T-matrix solver has to be use in combination with a BEM solver such
+% The T-matrix solver has to be used in combination with a BEM solver such
 % as <nanobem_ret_bem.html galerkin.bemsolver> or <nanobem_stratbem.html
 % stratified.bemsolver>.  To compute the T-matrices for a given wavenumber,
 % we first compute the solution for incoming multipole fields and then
@@ -52,5 +52,5 @@ tmat = eval( tsolver, sol );
 % * <matlab:edit('demomulti02') demomulti02.m> |-| T-matrices for TiO2
 % nanodisk and multiple wavelengths.
 %
-% Copyright 2023 Ulrich Hohenester
+% Copyright 2024 Ulrich Hohenester
 

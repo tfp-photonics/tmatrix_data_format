@@ -21,5 +21,5 @@ tmat = eval( mie, k0 );
 
 %%
 %
-% Copyright 2023 Ulrich Hohenester
+% Copyright 2024 Ulrich Hohenester
 

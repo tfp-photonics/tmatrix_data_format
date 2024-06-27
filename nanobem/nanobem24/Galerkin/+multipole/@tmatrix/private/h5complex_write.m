@@ -1,8 +1,9 @@
-function h5complex_write( id, dataset, data )
+function h5complex_write( id, dataset, data, key )
 %  H5COMPLEX_WRITE - Save complex matrix to dataset of H5 file.
 %
 %  Usage :
 %    h5complex_write( id, dataset, data )
+%    h5complex_write( id, dataset, data, 'vector' )
 %  Input
 %    id       :  group identifier
 %    dataset  :  name of dataset
@@ -19,7 +20,11 @@ H5T.insert( filetype, 'r',  0, doubleType );
 H5T.insert( filetype, 'i', sz, doubleType );
 
 %  create the dataset and write the compound data to it
-space = H5S.create_simple( ndims( data ), fliplr( size( data ) ), [] );
+if exist( 'key', 'var' ) && strcmp( key, 'vector' )
+  space = H5S.create_simple( 1, numel( data ), [] );  
+else
+  space = H5S.create_simple( ndims( data ), fliplr( size( data ) ), [] );
+end
 dset = H5D.create( id, dataset, filetype, space, 'H5P_DEFAULT' );
 H5D.write( dset, filetype, 'H5S_ALL', 'H5S_ALL', 'H5P_DEFAULT', wdata );
 

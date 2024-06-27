@@ -95,5 +95,15 @@
          <tocitem target="html/nanobem_examples.html" 
             image="HelpIcon.USER_GUIDE">nanobem Examples
         </tocitem> 
+        <tocitem target="html/nanobem_opt.html" 
+            image="HelpIcon.USER_GUIDE">+optics folder
+        <tocitem target="html/nanobem_opt_decompose.html">optics.decompose  </tocitem>
+        <tocitem target="html/nanobem_opt_lensimage.html">optics.lensimage  </tocitem>
+        <tocitem target="html/nanobem_opt_lensimage2.html">optics.lensimage2  </tocitem>
+        <tocitem target="html/nanobem_opt_lensfocus.html">optics.lensfocus  </tocitem>
+        <tocitem target="html/nanobem_opt_angular.html">optics.angular  </tocitem>
+        <tocitem target="html/nanobem_opt_capillary.html">optics.capillary  </tocitem>
+        <tocitem target="html/nanobem_opt_examples.html">Examples  </tocitem>
+        </tocitem>       
     </tocitem>
 </toc>

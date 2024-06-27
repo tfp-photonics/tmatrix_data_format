@@ -6,9 +6,9 @@
 %% Initialization
 
 %  initialize material
-%    eps    -  either constant or function for permittivity in units of vacuum
-%    mu    -  either constant or function for permeability in units of vacuum
-% permittivity
+%    eps  -  either constant or function for permittivity in units of vacuum permittivity
+%    mu   -  either constant or function for permeability in units of vacuum permeability
+% 
 obj = Material( eps, mu );
 
 %  initialization with constant value
@@ -37,7 +37,7 @@ Z   = obj.Z( k0 );    %  impedance
 k   = obj.k( k0 );    %  wavenumber
 
 %%
-% Here |k0| is the wavenumber of light in vacuum.
+% Here k0 is the wavenumber of light in vacuum.
 
 %% Examples
 

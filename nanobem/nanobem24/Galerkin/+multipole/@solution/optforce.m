@@ -1,14 +1,14 @@
-function [ f, data ] = optforce( obj, varargin )
-%  OPTFORCE - Optical force.
-%    See Guiterrez-Cuevas et al., PRA 97, 053448 (2018).
+function [ f, n, data ] = optforce( obj, varargin )
+%  OPTFORCE - Optical force and torque.
 %
 %  Usage for obj = multipole.solution :
-%    [ f, data ] = optforce( obj, data )
+%    [  f, n, data ] = optforce( obj, data )
 %  Input
 %    data   :  auxiliary data for computation of force
 %  Output
-%    f      :  optical force in pN
-%    data   :  auxiliary data for reuse
+%    f      :  optical force  in pN
+%    n      :  optical torque in pN × nm
+%    data   :  auxiliary data
 
 %  set up parser
 p = inputParser;
@@ -23,107 +23,87 @@ else
   data = p.Results.data;
 end
 
-%  wavenumber in embedding medium
-k2 = obj.mat.k( obj.k0 );
-%  Mie coefficients, account for different definitions 
-a  = @( i ) obj.b( i, : );  
-b  = @( i ) obj.a( i, : );
-ai = @( i ) obj.bi( i, : );
-bi = @( i ) obj.ai( i, : );
+%  Mie coefficients, account for different definitions
+tab = obj.tab;
+fac = ( - 1i ) .^ ( tab.l + 1 );
+[ a, ai ] = deal( fac .* obj.b, fac .* obj.bi );
+[ b, bi ] = deal( fac .* obj.a, fac .* obj.ai );
+%  allocate output
+[ f, n ] = deal( zeros( size( a, 2 ), 3 ) );
 
-%  auxiliary multiplication function
-fun = @( a, b ) conj( a ) .* b;
+%  loop over Cartesian coordinates
+for k = 1 : 3
+  %  evaluation functions
+  fun1 = fun( data{ k }.I1 );  
+  fun2 = fun( data{ k }.I2 );
+  fun3 = fun( data{ k }.I3 );
+  fun4 = fun( data{ k }.I4 );
+  %  optical force
+  f( :, k ) = fun1( a, a ) + fun1( b, b ) + fun1( ai, a ) + fun1( bi, b ) -  ...
+              fun2( b, a ) + fun2( a, b ) - fun2( bi, a ) + fun2( ai, b );
+  % optical torque
+  n( :, k ) = fun3( a, a ) + fun3( b, b ) + fun3( ai, a ) + fun3( bi, b ) -  ...
+              fun4( a, b ) + fun4( b, a );
+end
 
-%  first term in Eq. (29a)
-[ i1, i2, val ] = find( data.fx1 );
-fx1 = 2 * fun( a( i1 ), a( i2 ) ) + fun( ai( i1 ), a( i2 ) ) + fun( a( i1 ), ai( i2 ) ) +  ...
-      2 * fun( b( i1 ), b( i2 ) ) + fun( bi( i1 ), b( i2 ) ) + fun( b( i1 ), bi( i2 ) );
-fx1 = sum( bsxfun( @times, fx1, val ), 1 );
-%  second term in Eq. (29a)
-[ i1, i2, val ] = find( data.fx2 );
-fx2 = 2 * fun( a( i1 ), a( i2 ) ) + fun( ai( i1 ), a( i2 ) ) + fun( a( i1 ), ai( i2 ) ) +  ...
-      2 * fun( b( i1 ), b( i2 ) ) + fun( bi( i1 ), b( i2 ) ) + fun( b( i1 ), bi( i2 ) );
-fx2 = sum( bsxfun( @times, fx2, val ), 1 );
-%  third term in Eq. (29a)
-[ i1, i2, val ] = find( data.fx3 );
-fx3 = 2 * fun( a( i1 ), b( i2 ) ) + fun( ai( i1 ), b( i2 ) ) + fun( a( i1 ), bi( i2 ) ) -  ...
-      2 * fun( b( i1 ), a( i2 ) ) - fun( bi( i1 ), a( i2 ) ) - fun( b( i1 ), ai( i2 ) );
-fx3 = sum( bsxfun( @times, fx3, val ), 1 );    
-
-%  total force in x and y directions
-fx = 0.25i / k2 ^ 2 * ( fx1 + fx2 + fx3 );
-
-%  first term in Eq. (29b)
-[ i1, i2, val ] = find( data.fz1 );
-fz1 = 2 * fun( a( i1 ), a( i2 ) ) + fun( ai( i1 ), a( i2 ) ) + fun( a( i1 ), ai( i2 ) ) +  ...
-      2 * fun( b( i1 ), b( i2 ) ) + fun( bi( i1 ), b( i2 ) ) + fun( b( i1 ), bi( i2 ) );
-fz1 = sum( bsxfun( @times, fz1, val ), 1 );
-%  second term in Eq. (29b)
-[ i1, i2, val ] = find( data.fz2 );
-fz2 = 2 * fun( b( i1 ), a( i2 ) ) + fun( bi( i1 ), a( i2 ) ) + fun( b( i1 ), ai( i2 ) );
-fz2 = sum( bsxfun( @times, fz2, val ), 1 );
-
-%  total force in z-direction
-fz = - 0.5 / k2 ^ 2 * imag( fz1 + fz2 );
-%  assemble force
-f = [ real( fx( : ) ), imag( fx( : ) ), fz( : ) ];
+%  wavenumber and permeability of embedding medium
+mat = obj.mat;
+[ k, mu ] = deal( mat.k( obj.k0 ), mat.mu( obj.k0 ) );
 %  conversion factor force in pN, use vacuum permittivity
 fac = 1e12 * 8.854e-12;
-f = fac * f;
+%  force and torque
+f = - 0.5 * mu * fac / k ^ 2 * real( f );
+n = - 0.5 * mu * fac / k ^ 3 * real( n );
+
+
+
+function fun = fun( mat )
+%  FUN - Evalulation function
+
+%  nonzero elements of matrix
+[ i1, i2, val ] = find( mat );
+%  anonymous function
+fun = @( a, b ) sum( conj( a( i1, : ) ) .* val .* b( i2, : ), 1 );
 
 
 function data = init( obj )
 %  INIT - Precompute coefficients for computation of optical forces.
-%    See Guiterrez-Cuevas et al., PRA 97, 053448 (2018), Eq. (29).
 
-%  table of angular degrees and orders
-tab = [ obj.tab.l( : ), obj.tab.m( : ) ];
+%  quadrature points and weights
+quad = quadsph( obj, 'vector' );
+%  grid for spherical harmonics
+tab = obj.tab;
+n = numel( tab.l );
+[ i1, i2 ] = ndgrid( 1 : n );
+%  angular degree and orders changes by one
+ind = abs( tab.l( i1 ) - tab.l( i2 ) ) <= 1 &  ...
+      abs( tab.m( i1 ) - tab.m( i2 ) ) <= 1;
+[ i1, i2 ] = deal( i1( ind ), i2( ind ) );
+
+%  vector spherical harmonics and spherical harmonics
+[ xm, xe, ~, y ] = vsh( tab.l, tab.m, quad.t, quad.u );
+xe = 1i * xe;
+y = y .* sqrt( tab.l .* ( tab.l + 1 ) );
+
+%  unit vector
+[ u, t ] = deal( quad.u, quad.t );
+pos = [ cos( u ) .* sin( t ), sin( u ) .* sin( t ), cos( t ) ];
 %  allocate output
-[ fx1, fx2, fx3, fz1, fz2 ] = deal( zeros( size( tab, 1 ) ) );
+data = cell( 1, 3 );
 
-%  loop over angular degrees and orders
-for l = 1 : max( obj.tab.l )
-for m = - unique( tab( tab( :, 1 ) == l, : ) ) .'
-  %  first term in Eq. (29a)
-  %    prefactors may differ because of different function definitions
-  [ ~, i1 ] = ismember( [ l + 1, m + 1 ], tab, 'rows' );
-  [ ~, i2 ] = ismember( [ l,     m     ], tab, 'rows' );
-  if i1 && i2
-    r1 = ( l + m + 2 ) * ( l + m + 1 ) * l * ( l + 2 );
-    r2 = ( 2 * l + 1 ) * ( 2 * l + 3 );
-    fx1( i1, i2 ) = 1 / ( l + 1 ) * sqrt( r1 / r2 );
+%  loop over Cartesian coordinates
+for k = 1 : 3
+  %  coefficients for force evaluation
+  z = repmat( pos( :, k ) .* quad.w, 3, 1 );
+  data{ k }.I1 = dot( xm( i1, : ), xm( i2, : ) .* z .', 2 );
+  data{ k }.I2 = dot( xe( i1, : ), xm( i2, : ) .* z .', 2 );
+  %  coefficients for torque evaluation
+  data{ k }.I3 = dot( y( i1, : ), xm( i2, :, k ) .* quad.w .', 2 );
+  data{ k }.I4 = dot( y( i1, : ), xe( i2, :, k ) .* quad.w .', 2 );
+  %  assemble and compress arrays
+  for name = [ "I1", "I2", "I3", "I4" ]
+    z = data{ k }.( name );
+    z( abs( z ) < 1e-10 ) = 0;
+    data{ k }.( name ) = accumarray( { i1, i2 }, z, [ n, n ], [], [], true );
   end
-  %  second term in Eq. (29a)
-  [ ~, i1 ] = ismember( [ l,     m     ], tab, 'rows' );
-  [ ~, i2 ] = ismember( [ l + 1, m - 1 ], tab, 'rows' );
-  if i1 && i2
-    r1 = ( l - m + 2 ) * ( l - m + 1 ) * l * ( l + 2 );
-    r2 = ( 2 * l + 1 ) * ( 2 * l + 3 );
-    fx2( i1, i2 ) = 1 / ( l + 1 ) * sqrt( r1 / r2 );
-  end  
-  %  third term in Eq. (29a)
-  [ ~, i1 ] = ismember( [ l, m + 1 ], tab, 'rows' );
-  [ ~, i2 ] = ismember( [ l, m     ], tab, 'rows' ); 
-  if i1 && i2
-    r1 = ( l + m + 1 ) * ( l - m );
-    r2 = l * ( l + 1 );
-    fx3( i1, i2 ) = - sqrt( r1 ) ./ r2;
-  end    
-  
-  %  first term in Eq. (29b)
-  [ ~, i1 ] = ismember( [ l,     m ], tab, 'rows' );
-  [ ~, i2 ] = ismember( [ l + 1, m ], tab, 'rows' );
-  if i1 && i2 
-    r1 = ( l - m + 1 ) * ( l + m + 1 ) * l * ( l + 2 );
-    r2 = ( 2 * l + 1 ) * ( 2 * l + 3 );
-    fz1( i1, i2 ) = 1 / ( l + 1 ) * sqrt( r1 / r2 );
-  end
-  %  second term in Eq. (29b)
-  [ ~, i1 ] = ismember( [ l, m ], tab, 'rows' );
-  fz2( i1, i1 ) = m / ( l * ( l + 1 ) );
 end
-end
-
-%  set output
-data = struct(  ...
-  'fx1', fx1, 'fx2', fx2, 'fx3', fx3, 'fz1', fz1, 'fz2', fz2 );

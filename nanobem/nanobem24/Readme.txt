@@ -24,7 +24,7 @@ of the help browser under Supplemental Software.
 %%%  Copyright  %%%
 %%%%%%%%%%%%%%%%%%%
 
-Copyright (C) 2023 Ulrich Hohenester.
+Copyright (C) 2022-2024 Ulrich Hohenester.
 This code is distributed under the terms of the GNU General Public License.
 See the file COPYING for license details. 
 

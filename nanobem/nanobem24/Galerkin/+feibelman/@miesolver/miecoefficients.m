@@ -31,7 +31,7 @@ a = ( eps1 * j1 .* zjp2 - eps2 * j2 .* zjp1 + r1 ) ./   ...
     ( eps1 * j1 .* zhp2 - eps2 * h2 .* zjp1 + r2 );
   
 %  correction terms for TE coefficients
-r1 = ( z1 ^ 2 - z2 ^  2 ) / r * j2 .* j1;
-r2 = ( z1 ^ 2 - z2 ^  2 ) / r * h2 .* j1;
+r1 = ( z1 ^ 2 - z2 ^  2 ) / r * j2 .* j1 * d2;
+r2 = ( z1 ^ 2 - z2 ^  2 ) / r * h2 .* j1 * d2;
 %  Goncalves et al., Nat. Comm. 11, 366 (2020), Eq. (4b)
 b = ( j1 .* zjp2 - j2 .* zjp1 + r1 ) ./ ( j1 .* zhp2 - h2 .* zjp1 + r2 );

@@ -16,8 +16,8 @@ function  y = spharm( ltab, mtab, theta, phi )
 [ theta, phi ] = deal( reshape( theta, 1, [] ), reshape( phi,  1, [] ) );
 %  table of factorials
 ftab = factorial( 0 : ( 2 * max( ltab ) + 1 ) );
-%  dimension output
-y  = zeros( length( ltab ), length( theta ) );
+%  allocate output
+y = zeros( length( ltab ), length( theta ) );
 
 %  loop over unique ltab values
 for l = reshape( unique( ltab ), 1, [] )

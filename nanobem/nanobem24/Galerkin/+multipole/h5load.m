@@ -8,6 +8,20 @@ function [ tsol, tmat ] = h5load( finp )
 %  Output
 %    tsol   :  T-matrix solver
 %    tmat   :  T-matrices
+%
+%  h5file
+%    |
+%    +-- modes
+%         |
+%         +-- l
+%         +-- m
+%         +-- polarization
+%    +-- tmatrix
+%    +-- angular_vacuum_wavenumber
+%    +-- embedding
+%         |
+%         +-- relative_permittivity
+%         +-- relative_permeability
 
 %  load modes 
 l = double( h5read( finp, '/modes/l' ) );

@@ -6,7 +6,6 @@ classdef base
     tab     %  table of spherical degrees and orders
   end
   
-  
   methods 
     function obj = base( varargin )
       %  Initialize spherical degrees and orders.

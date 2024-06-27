@@ -28,15 +28,9 @@ classdef solution < multipole.base
       obj = init( obj, varargin{ : } );
     end
     
-    function csca = scattering( obj )
-      %  Scattered power, Hohenester Eq. (E.29).
-      fac = ( obj.mat.Z( obj.k0 ) / obj.mat.k( obj.k0 ) ) ^ 2;
-      csca = fac * sum( abs( obj.a ) .^ 2 + abs( obj.b ) .^ 2 ); 
-    end
-    
     function cext = extinction( obj )
       %  Extinction cross section.
-      fac = ( obj.mat.Z( obj.k0 ) / obj.mat.k( obj.k0 ) ) ^ 2;
+      fac = 0.5 * obj.mat.Z( obj.k0 ) / obj.mat.k( obj.k0 ) ^ 2;
       cext = - fac * real( obj.ai' * obj.a + obj.bi' * obj.b ); 
     end   
     

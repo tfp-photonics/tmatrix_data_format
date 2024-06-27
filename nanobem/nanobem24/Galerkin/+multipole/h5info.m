@@ -7,7 +7,10 @@ function info = h5info( varargin )
 %    tau              :  discretized particle boundary
 %    name             :  concisive description of T-matrix
 %    description      :  description, e.g. optimization goal
-%    matgroupname     :  group name for materials
+%    keywords         :  information on special properties like symmetries
+%    scatgroupname    :  group name for scatterers
+%    scatname         :  scatterer name
+%    scatdescription  :  scatterer description
 %    matname          :  material name
 %    matdescription   :  material description
 %    files            :  save Matlab files 
@@ -20,7 +23,10 @@ p.KeepUnmatched = true;
 addOptional( p, 'tau', [] );
 addParameter( p, 'name', "" );
 addParameter( p, 'description', "" );
-addParameter( p, 'matgroupname', "" );
+addParameter( p, 'keywords', "" );
+addParameter( p, 'scatgroupname', [] );
+addParameter( p, 'scatname', [] );
+addParameter( p, 'scatdescription', [] );
 addParameter( p, 'matname', [] );
 addParameter( p, 'matdescription', [] );
 addParameter( p, 'files', [] );

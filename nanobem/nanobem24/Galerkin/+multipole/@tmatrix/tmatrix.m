@@ -15,6 +15,7 @@ classdef tmatrix
   
   properties (Hidden, Dependent)
     k       %  wavenumber in embedding medium
+    tab     %  table of spherical orders and degrees
   end  
   
   methods 
@@ -37,7 +38,12 @@ classdef tmatrix
     function x = get.k( obj )
       %  Wavenumber in embedding medium.
       x = obj.solver.embedding.k( obj.k0 );
-    end     
+    end    
+    
+    function x = get.tab( obj )
+      %  Table of spherical orders and degrees.
+      x = obj.solver.tab;
+    end    
     
     function csca = scattering( obj )
       %  Average scattering cross section.

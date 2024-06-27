@@ -76,4 +76,4 @@ k0 = 2 * pi / lambda;
 %
 % <https://orcid.org/0000-0001-8929-2086 Ulrich Hohenester>
 %
-% Copyright 2022 Ulrich Hohenester
+% Copyright 2022-2024 Ulrich Hohenester

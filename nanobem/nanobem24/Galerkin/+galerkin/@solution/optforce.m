@@ -1,15 +1,16 @@
-function [ ftot, frc ] = optforce( obj, varargin )
+function [ f, n, f1 ] = optforce( obj, varargin )
 %  OPTFORCE - Optical force on particle.
 %
 %  Usage for obj = galerkin.solution :
-%    [ ftot, frc ] = optforce( sol, ind, PropertyPairs )
+%    [ f, n, f1 ] = optforce( sol, ind, PropertyPairs )
 %  Input
 %    ind    :  index to selected boundary elements 
 %  PropertyName
 %    imat   :  material index for embedding medium
 %  Output
-%    ftot   :  total optical force
-%    frc    :  force acting on boundary elements
+%    f      :  optical force
+%    n      :  optical torque
+%    f1     :  force density for boundary elements
 
 %  set up parser
 p = inputParser;
@@ -43,10 +44,15 @@ h = tensor( h, [ i, q, k, j ] );
 t = eps1 * dot( e, conj( e ), k ) + mu1 * dot( h, conj( h ), k );
 t = 0.5 * real( eps1 * e * dot( nvec, conj( e ), k ) +  ...
                  mu1 * h * dot( nvec, conj( h ), k ) - 0.5 * nvec * t );
+
+%  quadrature points
+[ pos, w ] = eval( pts );               
+[ pos, w ] = deal( tensor( pos, [ i, q, k ] ), tensor( w, [ i, q ] ) );
 %  conversion factor force in pN, use vacuum permittivity
 fac = 1e12 * 8.854e-12;
-%  integrate over boundary elements
-[ ~, w ] = eval( pts );
-frc = fac * double( sum( t * tensor( w, [ i, q ] ), q ), [ i, k, j ] );
-ftot = squeeze( sum( frc, 1 ) );
-if size( ftot, 1 ) ~= 1,  ftot = transpose( ftot );  end
+%  force and torque
+f = fac * double( sum( t * w, i, q ), [ j, k ] );
+n = fac * double( sum( cross( pos, t, k ) * w, i, q ), [ j, k ] );
+%  force density
+a = tensor( 1 ./ vertcat( tau.area ), i );
+f1 = fac * double( sum( t * w, q ) * a, [ i, k, j ] );

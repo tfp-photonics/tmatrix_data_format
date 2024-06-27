@@ -1,8 +1,8 @@
-function  [ xm, xe, x0 ] = vsh( ltab, mtab, theta, phi )
+function  [ xm, xe, x0, y ] = vsh( ltab, mtab, theta, phi )
 %  VSH - Vector spherical harmonics, Kiselev et al., PRA 89, 043803 (2014).
 %
 %  Usage :
-%    [ xm, xe, x0 ] = vsh( ltab, mtab, theta, phi )
+%    [ xm, xe, x0, y ] = vsh( ltab, mtab, theta, phi )
 %  Input
 %    ltab   :  table of spherical harmonic degrees
 %    mtab   :  table of spherical harmonic orders
@@ -12,6 +12,7 @@ function  [ xm, xe, x0 ] = vsh( ltab, mtab, theta, phi )
 %    xm     :  vector spherical harmonics, Eq. (3a)
 %    xe     :  Eq. (3b)
 %    x0     :  Eq. (3c)
+%    y      :  spherical harmonics
 
 %  convert to column and row vectors
 [ l, m ] = deal( ltab( : ), mtab( : ) );

@@ -25,7 +25,8 @@ n1 = 2 * fix( ( 2 * lmax + 1 ) / 2 ) + 1;
 x1 = ( 0 : n1 - 1 ) / n1 * 2 * pi;
 %  quadrature points and weights for polar direction
 n2 = 2 * ( lmax + 2 );
-[ x2, w2 ] = lgwt( n2, 0, pi );
+[ x2, w2 ] = lgwt( n2, -1, 1 );
+x2 = acos( x2 );
 
 %  sphere radius and outer product
 r = 0.5 * p.Results.diameter;
@@ -52,7 +53,7 @@ e = reshape( e( ind, : ), [], n3 );
 h = reshape( h( ind, : ), [], n3 );
 %  Legendre polynomials and prefactors
 y = spharm( tab.l, tab.m, x2, 0 * x2 );
-y = bsxfun( @times, y, reshape( w2 .* sin( x2 ), 1, [] ) );
+y = bsxfun( @times, y, reshape( w2, 1, [] ) );
 y = bsxfun( @rdivide, y, sqrt( tab.l( : ) .* ( tab.l( : ) + 1 ) ) );
 %  integration with Legendre polynomials
 e = sum( reshape( bsxfun( @times, e, y( : ) ), [], n2, n3 ), 2 );
