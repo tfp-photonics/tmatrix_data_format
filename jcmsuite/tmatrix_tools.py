@@ -268,7 +268,6 @@ def base_data(
         )
 
     fobj.attrs["storage_format_version"] = format_version
-    fobj.attrs["created_with"] = "python=" + sys.version.split()[0]
 
 
 def _check_name(fobj, name, exact=True):
@@ -505,7 +504,7 @@ GEOMETRY_PARAMS = {
     "torus": ("major_radius", "minor_radius"),
     "cube": ("length",),
     "rectangular_cuboid": ("lengthx", "lengthy", "lengthz"),
-     "helix": ("radius_helix", "radius_wire", "number_turns", "pitch")
+     "helix": ("radius_helix", "radius_wire", "number_turns", "pitch", "handedness", "termination")
 }
 
 

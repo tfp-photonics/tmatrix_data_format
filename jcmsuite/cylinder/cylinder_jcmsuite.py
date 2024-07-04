@@ -3,6 +3,8 @@
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+jcm_root = '/scratch/local/nasadova/JCMsuite' # -> set your JCMROOT installation directory
+sys.path.append(os.path.join(jcm_root, 'ThirdPartySupport', 'Python'))
 import h5py
 import jcmwave
 import numpy as np
@@ -42,7 +44,7 @@ def run():
 
     jcmwave.geo(".", keys, jcmt_pattern=jcmt_pattern, working_dir=working_dir)
     jcmwave.daemon.shutdown()  # Make sure no daemon is running
-    jcmwave.daemon.add_workstation(Multiplicity=10) 
+    jcmwave.daemon.add_workstation(Multiplicity=20) #How many instances to run in parallel (each uses one license)
 
     jobids = []
     for i, freq in enumerate(freqs):
@@ -65,7 +67,7 @@ def run():
         modes_inc = None
     else:
         modes_inc = ls, ms, pols
-    with h5py.File(jcmt_pattern + ".h5", "w") as fobj:
+    with h5py.File(jcmt_pattern + "_tio2.tmat.h5", "w") as fobj:
         tmatrix_tools.base_data(
             fobj,
             tmatrices=tmats,
@@ -80,7 +82,7 @@ def run():
             funit=tmatrix_tools.FREQUENCIES[uof],
             modes=(ls, ms, pols),
             modes_inc=modes_inc,
-            format_version="draft",
+            format_version="v1",
         )
         for index, (name, description, keywords, epsilon, mu) in enumerate(zip(
             material_names,
@@ -121,7 +123,7 @@ def run():
             description="Using the built-in post-process 'MultipoleExpansion'. Rotationally symmetric 3D problem is computed in 2D",
             method="FEM, Finite Element Method",
             keys=keys_method,
-            program_version="jcmsuite=" + jcmwave.__private.version,
+            program_version=f"jcmsuite={jcmwave.__private.version}, python={sys.version.split()[0]}, numpy={np.__version__}, h5py={h5py.__version__}",
             meshfile=os.path.join(working_dir, "grid.jcm"),
             lunit=tmatrix_tools.LENGTHS[keys["uol"]],
         )
@@ -134,8 +136,6 @@ def run():
             fobj[f"computation/files/{os.path.basename(__file__)}"] = scriptfile.read()
         with open(meshparser.__file__, "r") as scriptfile:
             fobj[f"computation/files/{os.path.basename(meshparser.__file__)}"] = scriptfile.read()
-
-
         fobj.create_group(f"{scatname}/geometry")
         mesh = meshparser.Mesh(
             {
@@ -146,7 +146,6 @@ def run():
                 if domain.tag > 1 and domain.dim == 2 # change to 3 for 3D
             }
         )
-        # print(mesh)
         fobj[f"{scatname}/geometry"].attrs["unit"] = tmatrix_tools.LENGTHS[keys["uol"]]
         tmatrix_tools.geometry_shape(
             fobj[f"{scatname}/geometry"],
@@ -156,7 +155,7 @@ def run():
             lunit=tmatrix_tools.LENGTHS[keys["uol"]],
             working_dir=working_dir,
         )
-        fobj["mesh.msh"] = h5py.SoftLink("/computation/mesh.msh")
+        fobj["mesh"] = h5py.SoftLink("/computation/mesh.msh")
 
 
 
