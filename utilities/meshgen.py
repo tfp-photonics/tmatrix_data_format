@@ -6,6 +6,7 @@ faithful as possible. However, an exact one to one correspondance is not always
 possible. Currently, COMSOL files (.mphtxt), JCMsuite files (.jcm), and gmsh files
 (.msh) are supported.
 """
+
 import operator
 
 import argparse as _argparse
@@ -17,7 +18,8 @@ from abc import ABCMeta as _ABCMeta
 from collections import abc as _abc
 from importlib import metadata as _metadata
 import numpy as np
-#__version__ = _metadata.version("meshparser")
+
+# __version__ = _metadata.version("meshparser")
 _MIRROR = 2**28
 _TRANSPARENT = 2**29
 _PERIODIC = 2**30
@@ -1138,7 +1140,6 @@ $Nodes
             len({type(e) for e in domain}) for domain in self.domains if domain.dim > 0
         )
         nelements = sum(len(domain) for domain in self.domains if domain.dim > 0)
-        
 
         fobj.write(
             f"{nblocks} {nelements} "
@@ -1147,21 +1148,21 @@ $Nodes
         elements_by_domain_and_type = {}
 
         for (dim, _), domain in domains_by_dim.items():
-            val = np.array([d for d in domain], dtype = object)
+            val = np.array([d for d in domain], dtype=object)
             vallist = [d for d in domain]
             ds = []
-            gmv = np.array([d.gmsh_type  for d in domain])
+            gmv = np.array([d.gmsh_type for d in domain])
             gsort = np.sort(gmv)
             valsort = val[np.argsort(gmv)]
-            uni, ind = np.unique(gsort, return_index = True)
+            uni, ind = np.unique(gsort, return_index=True)
             if dim == 0:
                 continue
             elements_by_domain_and_type[domain] = {}
             groups = np.split(valsort, ind[1:])
             lsgroup = []
             ind = np.append(ind, len(val))
-            for i in range(len(ind)-1):
-                lsgroup.append(vallist[ind[i]:ind[i+1]])
+            for i in range(len(ind) - 1):
+                lsgroup.append(vallist[ind[i] : ind[i + 1]])
             for i, u in enumerate(uni):
                 elements_by_domain_and_type[domain][u] = lsgroup[i]
         gmsh_types = sorted(
@@ -1181,7 +1182,6 @@ $Nodes
                         f"{' '.join(str(self.nodes[node]) for node in element)} \n"
                     )
         fobj.write("$EndElements\n")
-
 
     def gmsh(self, model):
         """Create a gmsh model.
@@ -1231,15 +1231,13 @@ $Nodes
 read = Mesh.read
 
 
+# @jit(nopython=True)
+def loopjit(
+    ed,
+):
+    for element in domain:
 
-
-#@jit(nopython=True)
-def loopjit(ed, ):
-        for element in domain:
-
-            ed.setdefault(
-                element.gmsh_type, []
-            ).append(element)
+        ed.setdefault(element.gmsh_type, []).append(element)
 
 
 def _read_header_jcm(fobj):
@@ -1464,8 +1462,8 @@ def _cli():
         help="skip writing 1D elements in 2D COMSOL meshes",
         action="store_true",
     )
-    #JUAT COMMENTED THIS SORRY
-    #parser.add_argument("--version", action="version", version=__version__)
+    # JUAT COMMENTED THIS SORRY
+    # parser.add_argument("--version", action="version", version=__version__)
     args = parser.parse_args()
     mesh = read(args.input)
     mesh.write(args.output, mode=args.mode, skip_1d=args.skip_1d)

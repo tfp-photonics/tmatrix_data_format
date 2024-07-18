@@ -87,7 +87,7 @@ FREQUENCIES = {
 
 def translate_pols(pols, poltype):
     """
-    This assumes particular ordering of initial ones and zeros, 
+    This assumes particular ordering of initial ones and zeros,
     does not ensure correct final order.
     """
     if poltype == "parity":
@@ -261,7 +261,7 @@ def biisotropic_material(
     epsilon=None,
     mu=None,
     kappa=None,
-    chi=None
+    chi=None,
 ):
     isotropic_material(
         fobj,
@@ -293,7 +293,7 @@ def bianisotropic_material(
     mu_inner_dims=2,
     kappa_inner_dims=2,
     chi_inner_dims=2,
-    coordinates="Cartesian"
+    coordinates="Cartesian",
 ):
     biisotropic_material(
         fobj,
@@ -303,7 +303,7 @@ def bianisotropic_material(
         epsilon=epsilon,
         mu=mu,
         kappa=kappa,
-        chi=chi
+        chi=chi,
     )
     for param, val, inner_dims in [
         ("relative_permittivity", epsilon, epsilon_inner_dims),
@@ -324,7 +324,7 @@ def bianisotropic_material_from_tensor(
     keywords="",
     bianisotropy,
     inner_dims=2,
-    coordinates="Cartesian"
+    coordinates="Cartesian",
 ):
     _check_name(fobj.parent, "/materials")
 
@@ -377,6 +377,7 @@ def computation_data(
             fobj[f"files/{os.path.split(meshfile)[1]}"] = np.void(fobj_mesh.read())
     with open(__file__, "r") as scriptfile:
         fobj[f"files/{os.path.basename(__file__)}"] = scriptfile.read()
+
 
 GEOMETRY_PARAMS = {
     "sphere": ("radius",),
