@@ -1,0 +1,74 @@
+---
+title: "Calculating many SMARTIES T-matrices"
+author: "baptiste"
+date: today
+format: html
+engine: knitr
+---
+
+Below is an example script to run many SMARTIES simulations and export the T-matrices in HDF5. The script is available as standalone script [smarties_batch.R](smarties_batch.R). 
+
+```{r, eval=TRUE, message=FALSE}
+library(glue)
+library(dplyr)
+library(purrr)
+
+# read in the template
+template <- glue_collapse(readLines('../smarties/batch/_template.m'), sep = "\n")
+
+parameters <- expand.grid(a = seq(10, 100, by=5), c = seq(10, 100, by=5),
+                          material = c("Au", "Ag", "Si"), 
+                          medium = c("vacuum", "water")) |> 
+  filter(a != c) |> # use Mie for this
+  mutate(shape = ifelse(a > c, "oblate", "prolate"),
+         n = ifelse(medium == "water", 1.33, 1.0),
+         source = case_when(material == "Au" ~ "Raschke et al 10.1103/PhysRevB.86.235147", 
+                            material == "Ag" ~ "Raschke et al 10.1103/PhysRevB.91.235137",
+                            material == "Si" ~ "Aspnes et al 10.1103/PhysRevB.27.985",
+                            .default = "Unknown material!"))
+
+parameters$step <- 1
+nrow(parameters)
+```
+
+For initial testing, we'll run much fewer combinations
+
+```{r, eval=TRUE}
+parameters <- expand.grid(a = seq(20, 50, by=10), c = seq(20, 50, by=10),
+                          material = c("Au", "Ag"), 
+                          medium = c("water")) |> 
+  filter(a != c) |> # use Mie for this
+  mutate(shape = ifelse(a > c, "oblate", "prolate"),
+         n = ifelse(medium == "water", 1.33, 1.0),
+         source = case_when(material == "Au" ~ "Raschke et al 10.1103/PhysRevB.86.235147", 
+                            material == "Ag" ~ "Raschke et al 10.1103/PhysRevB.91.235137",
+                            material == "Si" ~ "Aspnes et al 10.1103/PhysRevB.27.985",
+                            .default = "Unknown material!"))
+parameters$step <- 5
+```
+
+Even with these restricted options, there's already `r nrow(parameters)` combinations.
+
+```{r echo=FALSE}
+gt::gt(parameters[,c("a","c","shape","material","medium")])
+```
+
+We use the "glue" package to inject the parameters into the template, where the variables are indicated between braces `{}`. The process loops over each parameter combination and outputs a new file with corresponding filename.
+
+```{r}
+write_script <- function(a, c, material, medium, shape, n, step, source){
+ script <- glue(template)   
+ cat(script, file = glue('../smarties/batch/run_{material}_{medium}_{a}_{c}.m'))
+ cat(glue("run_{material}_{medium}_{a}_{c}\n\n"), 
+     file = "../smarties/batch/batch.m", append = TRUE)
+}
+cat("%% Running all the files below\n",file = "../smarties/batch/batch.m", append = FALSE)
+pwalk(rowwise(parameters), write_script)
+```
+
+Running the batch script in Matlab results in `r nrow(parameters)` output T-matrix files of size between 4 and 6Mb each, with the 5nm step defined above. The value of Lmax needed for $10^{-10}$ accuracy in $\langle\sigma_\text{ext}\rangle$ appears to be around 11.
+
+<!-- export the code into standalone file -->
+`r invisible(knitr::purl(xfun::with_ext(knitr::current_input(), "qmd"),output=xfun::with_ext(knitr::current_input(), "R")))`
+
+

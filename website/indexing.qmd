@@ -1,0 +1,181 @@
+---
+title: "Indexing conventions"
+author: "baptiste"
+date: today
+---
+
+```{r setup, warning=FALSE,echo=FALSE, message=FALSE}
+library(dplyr)
+library(DT)
+library(knitr)
+library(dplyr)
+library(ggplot2)
+library(grid)
+library(patchwork)
+read_chunk('_utilities.R')
+source("_utilities.R")
+```
+
+We describe in this document two indexing conventions for ordering T-matrix elements.
+
+## Magnetic-electric 2x2 block matrix layout
+
+A common notation in the T-matrix literature is to expand fields in vector spherical waves as,
+
+$$
+\begin{aligned}
+\mathbf{E}(\mathbf{r}) = &\sum_{l=1}^{\infty} \sum_{m=-l}^l\left[a_{m l} \mathbf{M}_{m l}\left(k \mathbf{r}\right)+b_{m l} \mathbf{N}_{m l}\left(k\mathbf{r}\right)\right]  \\ {} = & \sum_{s=1}^2\sum_{l=1}^{\infty} \sum_{m=-l}^l a^{(s)}_{ m l} \mathbf{\Psi}^{(s)}_{m l}\left(k \mathbf{r}\right) \quad \text{(compact notation)}
+\end{aligned}
+$$
+
+- l: multipole degree 1:lmax
+- m: multipole order, -l:l
+- s: multipole polarisation type, 1 (magnetic) or 2 (electric)
+
+and $\mathbf{M}\equiv \mathbf{\Psi}^{(1)}, \mathbf{N}\equiv \mathbf{\Psi}^{(2)}$ stand for the "magnetic" and "electric" types, respectively. 
+
+Arranging the expansion coefficients in this order naturally leads to the common `2x2` block-matrix displayed below. Explicitly, for a T-matrix with $l_\text{max}=3$, we can visualise the 900 elements organised as follows:
+
+```{r tmat, warning=FALSE,echo=FALSE, message=FALSE}
+
+indices <- function(lmax=3, part=1){
+  ul <- seq(1,lmax)
+  
+  l = do.call(c, lapply(ul, function(.l)rep(.l, 2*.l+1)))
+  m = do.call(c, lapply(ul, function(.l)seq(-.l,.l)))
+  
+  ll <- expand.grid(l = l, lp = l)
+  mm <- expand.grid(m = m, mp = m)
+  d <- rbind(cbind(ll, mm, s=1,sp=1),
+             cbind(ll, mm, s=1,sp=2),
+             cbind(ll, mm, s=2,sp=1),
+             cbind(ll, mm, s=2,sp=2))
+  
+  dplyr::mutate(d, 
+                p = l*(l+1)+m, 
+                q = (s - 1)* max(p) + p,
+                pp = lp*(lp+1)+mp,
+                qp = (sp - 1)* max(pp) + pp,
+                u = 2*(p-1) + (3 - s),
+                up = 2*(pp-1) + (3 - sp),
+                polar = ifelse(s == 1, "m", "e"),
+                polarp = ifelse(sp == 1, "m", "e")
+                )
+}
+
+tmat <- indices(3, 1)
+# cat(sprintf("l: %s\nm: %s\ns: %s\n%s elements",
+#             paste(range(tmat$l), collapse = '..'), 
+#             paste(range(tmat$m), collapse = '..'), 
+#             paste(range(tmat$s), collapse = '..'), 
+#             nrow(tmat)))
+
+
+d <- tmatrix_combinedindex(tmat)
+lmax <- max(d$l)
+breaks <- tmatrix_breaks(lmax)
+
+p <- ggplot(d, aes(q, qp)) +
+  # geom_raster() +
+  coord_equal() +
+  scale_fill_viridis_c(option = 'A', direction = -1) +
+  annotate('segment',x=0.5,xend=max(breaks$breaks)+0.5,y=max(breaks$breaks)/2+0.5,
+           yend=max(breaks$breaks)/2+0.5,colour='white')+
+  annotate('segment',y=0.5,yend=max(breaks$breaks)+0.5,x=max(breaks$breaks)/2+0.5,
+           xend=max(breaks$breaks)/2+0.5,colour='white')+
+  scale_y_reverse(expand=c(0,0), breaks= breaks$breaks+0.5, minor_breaks=breaks$minor_breaks+0.5, labels=breaks$labels) +
+  scale_x_continuous(expand=c(0,0), breaks= breaks$breaks+0.5, minor_breaks=breaks$minor_breaks+0.5, labels=breaks$labels) +
+  theme_minimal() +
+  theme(panel.grid = element_line(colour = 'white'), 
+        panel.background = element_rect(fill='grey90',colour='white'),
+        panel.border = element_rect(colour='black',fill=NA,linewidth = 0.2),
+        axis.text.x = element_text(hjust=1),
+        axis.text.y = element_text(vjust=0)) +
+  labs(x="p",y="p'",fill=expression(log~"|T|"))
+
+print(p)
+```
+
+To keep track of the multiple indices, for each block we can introduce a combined p-index such that,
+
+$$
+p(l,m) = l(l+1)+m
+$$
+which here varies as `r sprintf("p: %s", paste(range(tmat$p), collapse = '..'))`, as each block is of dimension `pmax = lmax(lmax+1)+lmax = 3(3+1)+3 = 15`.
+
+The whole T-matrix is indexed with a combined q-index such that,
+
+$$
+q(s,p) = (s-1)p_{max} + p 
+$$
+which here gives us,
+`r sprintf("q: %s", paste(range(tmat$q), collapse = '...'))`. The total T-matrix dimension (along rows/columns) is thus $q_{max}=2\times(l_\text{max}(l_\text{max}+1)+l_\text{max})=30$.
+
+In summary, for a given $l_\text{max}$ the indices are given by:
+
+- $l=1:l_\text{max}$
+- $m=-l:l$ for each l
+- $s=1:2$ for each pair of (l,m)
+- $p(l,m) = l(l+1)+m$
+- $q(s,p) = (s-1)p_{max} + p$
+
+Given $q$ and $l_\text{max}$ we can invert these indices as follows,
+
+- $p = q - (s-1)q_\text{max}/2$,   
+giving here, `r (p=1:30 - (rep(1:2, each=15)-1)*30/2)`
+- $l = \lfloor\sqrt{p}\rfloor$,   
+giving here `r (l = floor(sqrt(p)))`
+- $m = p - l(l+1)$,   
+giving here `r (m = p-l*(l+1))`
+
+## tmat.h5 indexing convention
+
+In the tmat.h5 format inherited from Treams, indices are ordered by `polarization, m, l` (fastest to slowest). We can convert to this indexing by calculating new indices `u, u'` such that:
+
+$$u = 2(p-1) + (3-s)$$
+where $(3-s)$ swaps electric and magnetic ordering (1 is electric in tmat.h5, 2 magnetic, but in the original block-matrix layout the first index is magnetic). Noting this little change, the index $u$ simply alternates terms from the electric/magnetic blocks. Below is a reference table for the conversions taking place for the example of $l_\text{max}=3$. The index $q$ runs from 1 to 30, and the corresponding index $u$ in tmat.h5 convention has the elements reordered.
+
+```{r summary, warning=FALSE,echo=FALSE, message=FALSE}
+show_indices <- subset(tmat, lp==1 & mp==0 & sp==1)[c("q","u", "polar","p", "l","m","s")]
+display <- t(show_indices[,-1])
+colnames(display) <- show_indices$q
+knitr::kable(display, 
+             format = "markdown", padding = 2)
+```
+
+A visual representation of $(u,u')$ indices for the original T-matrix entries is shown below:
+
+```{r uup, warning=FALSE,echo=FALSE, message=FALSE}
+#| fig-width: 8.5
+#| fig-height: 8
+#| column: screen-inset-shaded
+d$label <- glue_data(d,"({u},{up})")
+d$blocks <- paste(d$polar, d$polarp, sep='-')
+lmax <- max(d$l)
+breaks <- tmatrix_breaks(lmax)
+
+p <- ggplot(d, aes(q, qp)) +
+  # geom_raster() +
+  geom_tile(aes(fill = blocks),col='white',alpha=0.5) +
+  geom_text(aes(label=label),size=1.8) +
+  coord_equal() +
+  scale_fill_brewer(palette="Pastel1")+
+  # scale_fill_viridis_c(option = 'A', direction = -1) +
+  annotate('segment',x=0.5,xend=max(breaks$breaks)+0.5,y=max(breaks$breaks)/2+0.5,
+           yend=max(breaks$breaks)/2+0.5,colour='white')+
+  annotate('segment',y=0.5,yend=max(breaks$breaks)+0.5,x=max(breaks$breaks)/2+0.5,
+           xend=max(breaks$breaks)/2+0.5,colour='white')+
+  scale_y_reverse(expand=c(0,0), breaks= breaks$breaks+0.5, minor_breaks=breaks$minor_breaks+0.5, labels=breaks$labels) +
+  scale_x_continuous(expand=c(0,0), breaks= breaks$breaks+0.5, minor_breaks=breaks$minor_breaks+0.5, labels=breaks$labels) +
+  theme_minimal() +
+  theme(panel.grid = element_line(colour = 'white'), 
+        panel.background = element_rect(fill='grey90',colour='white'),
+        panel.border = element_rect(colour='black',fill=NA,linewidth = 0.2),
+        axis.text.x = element_text(hjust=1),
+        axis.text.y = element_text(vjust=0)) +
+  labs(x="p",y="p'",fill="block",title="Indices (u, u') placed in original block layout")
+
+print(p)
+```
+
+

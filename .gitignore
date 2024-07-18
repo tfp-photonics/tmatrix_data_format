@@ -162,3 +162,7 @@ cython_debug/
 #GitHub pages
 /.quarto/
 /_site/
+/_freeze/
+
+terms/tetrahedron_nm.tmat.h5
+utilities/tetrahedron_nm.tmat.h5

@@ -1,0 +1,25 @@
+%% Running all the files below
+run_Au_water_30_20
+run_Au_water_40_20
+run_Au_water_50_20
+run_Au_water_20_30
+run_Au_water_40_30
+run_Au_water_50_30
+run_Au_water_20_40
+run_Au_water_30_40
+run_Au_water_50_40
+run_Au_water_20_50
+run_Au_water_30_50
+run_Au_water_40_50
+run_Ag_water_30_20
+run_Ag_water_40_20
+run_Ag_water_50_20
+run_Ag_water_20_30
+run_Ag_water_40_30
+run_Ag_water_50_30
+run_Ag_water_20_40
+run_Ag_water_30_40
+run_Ag_water_50_40
+run_Ag_water_20_50
+run_Ag_water_30_50
+run_Ag_water_40_50

@@ -1,0 +1,31 @@
+---
+title: "T-matrix"
+author: "baptiste"
+date: today
+---
+
+Collection of scripts and self-contained examples to export/import T-matrices.
+
+## Examples of export with dummy data
+
+- Doc: [Julia](export_julia.html) • Script: [export_julia.jl](export_julia.jl) • Output: [aj.tmat.h5](aj.tmat.h5)
+- Doc: [Matlab](export_matlab.html) • Script: [export_matlab.m](export_matlab.m) • Output: [am.tmat.h5](am.tmat.h5)
+- Doc: [Python](export_python.html) • Script: [export_python.py](export_python.py) • Output: [ap.tmat.h5](ap.tmat.h5)
+- Doc: [R](export_R.html) • Script: [export_R.R](export_R.R) • Output: [ar.tmat.h5](ar.tmat.h5)
+
+## Misc. utilities
+
+- [Conversion](conversion.html)
+- [Display](display.html)
+- [Indexing](indexing.html)
+
+## SMARTIES examples
+
+- Doc: [Smarties](smarties_simple.html) • Script: [smarties_simple.m](smarties_simple.m) • Output: [smarties/smarties_simple.tmat.h5](smarties/smarties_simple.tmat.h5)
+- Doc: [Smarties](smarties_advanced.html) • Script: [smarties_advanced.m](smarties_advanced.m) • Output: [smarties/smarties_advanced.tmat.h5](smarties/smarties_advanced.tmat.h5)
+- Batch example, to run many simulations: [smarties_batch](smarties_batch.html)
+
+## TERMS examples
+
+- Dimer of spheroids: [comparison](terms_comparison.html) 
+- Tetrahedron: [example](terms_tetrahedron.html) 

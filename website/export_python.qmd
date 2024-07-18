@@ -1,0 +1,103 @@
+---
+title: "Export to '.tmat.h5' format with Python"
+author: "baptiste, with inital code from Nigar"
+date: today
+engine: knitr
+---
+
+This document showcases a basic Matlab script to export T-matrices in the `.tmat.h5` HDF5 format. For illustration, we start by producing a dummy dataset. This minimal reproducible example file is available for download as a standalone script: [export_python.py](export_python.py).
+
+## Mockup input data
+
+Consistent with the other examples, we generate a `50x30x30` array of dummy data, which repeats 50 times (50 wavelengths) a matrix of 900 entries ranging from $1+1i$ (first element, top left) to $900 + 900i$ (last element, bottom right). Note the expectation of **row-major** ordering in HDF5. The `3x3` top-left block is
+
+```
+   1.0000 + 1.0000i   2.0000 + 2.0000i   3.0000 + 3.0000i ...
+  31.0000 +31.0000i  32.0000 +32.0000i  33.0000 +33.0000i ...
+  61.0000 +61.0000i  62.0000 +62.0000i  63.0000 +63.0000i ...
+   ...               ...                ...               ...
+```
+
+The Python library `h5py` provides a convenient object-oriented interface to save python objects in the required HDF5 structure, so we don't need particular care to organise them on the Python side.
+
+```{python, eval=FALSE}
+import numpy as np
+import os, sys
+import h5py
+#possibly multiple wavelengths
+wavelength  = np.arange(400,850, 50)
+Nl = len(wavelength)
+lmax = 3
+qmax = 2*(lmax*(lmax+1)+lmax)
+# dummy 30x30 matrix values repeated for each wavelength
+tdata = np.reshape(np.arange(1,901,1) + 1j*np.arange(1,901,1), (qmax,qmax))
+tmatrix = np.zeros((Nl,qmax,qmax), dtype="complex")
+for i in range(Nl):
+  tmatrix[i,:,:] = tdata
+
+print(tmatrix[0,0:3,0:3])
+
+l = np.zeros(qmax)
+m = np.zeros(qmax)
+s = np.array([b'xxxxxxic']*len(l))
+i=0
+for li in range(1,lmax+1):
+    for mi in range(-li, li+1):
+        for si in [b'electric', b'magnetic']:
+            l[i] = li
+            m[i] = mi
+            s[i] = si
+            i = i+1
+```
+
+## Saving to HDF5
+
+The Python library `h5py` provides a convenient interface to generate groups, datasets, and attributes with simple assigments:
+
+```{python, eval=FALSE}
+# Saving to HDF5
+f = 'ap.tmat.h5';
+with h5py.File(f, "w") as f:
+    f["vacuum_wavelength"] = np.asarray(wavelength)
+    f["vacuum_wavelength"].attrs["unit"] = "nm"
+    f["tmatrix"] = tmatrix
+    f['modes/l'] = l
+    f['modes/m'] = m
+    f['modes/polarization'] = s
+    emb = f.create_group(f"embedding")
+    emb["relative_permittivity"] = 1.33**2
+    emb["relative_permeability"] = 1.0
+    emb.attrs["name"] = "H2O, Water"
+    emb.attrs["keywords"] = "non-dispersive"
+    sca_mat = f.create_group("scatterer/material")
+    sca_mat.attrs["name"] = 'Au, Gold'
+    sca_mat.attrs["keywords"] = "dispersive, plasmonic"
+    sca_mat.attrs["reference"] = "Au from Raschke et al 10.1103/PhysRevB.86.235147"
+    sca_mat["relative_permittivity"] = np.ones(len(wavelength), dtype = complex)*(-11.4+1.181j)
+    sca_mat["relative_permeability"] = 1.0
+    sca_gr = f.create_group("scatterer/geometry")
+    sca_gr["radiusxy"] = 20.0
+    sca_gr["radiusz"] = 40.0
+    sca_gr.attrs['unit'] = 'nm'
+    sca_gr.attrs['shape'] = 'spheroid'
+    sca_gr.attrs['name'] = 'homogeneous spheroid with symmetry axis z'
+    mpar = f.create_group("computation/method_parameters")
+    #f["computation/analytical_zeros"] = analytical_zeros # not needed in this example
+    mpar["Lmax"] = lmax
+    mpar["Ntheta"] = 100
+    f.create_group("computation/files")
+    with open(__file__, "r") as scriptfile:
+        f[f"computation/files/{os.path.basename(__file__)}"] = scriptfile.read()
+    f["computation"].attrs["method"] = "EBCM, Extended Boundary Condition Method" 
+    f["computation"].attrs["description"] = "Computation using SMARTIES, a numerically robust EBCM implementation for spheroids" 
+    f["computation"].attrs["software"] = f"SMARTIES=1.1, python={sys.version.split()[0]}, h5py={h5py.__version__}"
+    f["computation"].attrs["name"] = "SMARTIES"
+    f.attrs['name'] = 'Au prolate spheroid in water'
+    f.attrs['keywords'] = 'gold, spheroid, ebcm, passive, reciprocal, czinfinity, mirrorxyz'
+    f.attrs['description'] = 'Computation using SMARTIES, a numerically robust EBCM implementation for spheroids'
+    f.attrs['storage_format_version'] = 'v1'    
+
+```
+
+<!-- export the code into standalone file -->
+`r invisible(knitr::purl(xfun::with_ext(knitr::current_input(), "qmd"),output=xfun::with_ext(knitr::current_input(), "py")))`

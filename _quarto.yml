@@ -1,0 +1,49 @@
+project:
+  type: website
+  post-render: website/_website.R
+  render:
+    - "*.qmd"
+
+execute:
+  freeze: auto  # re-render only when source changes
+
+website:
+  title: "T-matrix"
+  navbar:
+    tools:
+      - icon: github
+        menu:
+          - text: Source Code
+            url:  https://github.com/tfp-photonics/tmatrix_data_format
+          - text: Discussion
+            url:  https://github.com/tfp-photonics/tmatrix_data_format/discussions
+    left:
+      - text: "Exporting to HDF5"
+        menu:
+        - website/export_julia.qmd 
+        - website/export_matlab.qmd 
+        - website/export_python.qmd 
+        - website/export_R.qmd
+      - text: "Conversion long/wide"
+        file: website/conversion.qmd
+      - text: "Indexing reference"
+        file: website/indexing.qmd
+      - text: "Displaying T-matrices"
+        file: website/display.qmd
+      - text: "SMARTIES"
+        menu:
+        - website/smarties_simple.qmd
+        - website/smarties_advanced.qmd
+        - website/smarties_batch.qmd
+      - text: "TERMS"
+        menu:
+        - website/terms_comparison.qmd
+        - website/terms_tetrahedron.qmd
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+
+
+

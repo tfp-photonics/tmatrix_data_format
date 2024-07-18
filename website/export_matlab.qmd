@@ -1,0 +1,157 @@
+---
+title: "Export to '.tmat.h5' format with Matlab"
+author: "baptiste"
+date: today
+engine: knitr
+---
+
+This document showcases a basic Matlab script to export T-matrices in the `.tmat.h5` HDF5 format. For illustration, we start by producing a dummy dataset. This minimal reproducible example file is available for download as a standalone script: [export_matlab.m](export_matlab.m).
+
+## Mockup input data
+
+Consistent with the other examples, we generate a `50x30x30` array of dummy data, which repeats 50 times (50 wavelengths) a matrix of 900 entries ranging from $1+1i$ (first element, top left) to $900 + 900i$ (last element, bottom right). Note the expectation of **row-major** ordering in HDF5. The `3x3` top-left block is
+
+```
+   1.0000 + 1.0000i   2.0000 + 2.0000i   3.0000 + 3.0000i ...
+  31.0000 +31.0000i  32.0000 +32.0000i  33.0000 +33.0000i ...
+  61.0000 +61.0000i  62.0000 +62.0000i  63.0000 +63.0000i ...
+   ...               ...                ...               ...
+```
+
+The `easyh5` library takes care of most of the details for us, when objects are stored in Matlab structures. There are a couple of caveats, illustrated below, such as `polarization` being handled separately, and attributes being added at a later stage.
+
+```{octave, eval=FALSE}
+% possibly multiple wavelengths
+wavelength  = (400:50:800)';
+Nl = length(wavelength);
+
+Lmax = 3;
+qmax = 2*(Lmax*(Lmax+1)+Lmax); % T-matrix size
+
+% dummy 30x30 matrix values for each wavelength
+% note the transpose due to HDF5 expecting
+% row-major ordering vs matlab's default column-major
+tdata = transpose(reshape((1:qmax^2) + 1i*(1:qmax^2), [qmax,qmax]));
+
+tmatrix = zeros(Nl,qmax,qmax);
+for i=1:Nl
+    tmatrix(i,:,:) = tdata;
+end
+
+squeeze(tmatrix(1,1:3,1:3))
+
+% modes, but note that polarization is turned into strings separately
+i=1;
+for l=1:3
+    for m=-l:l
+        for s=1:2
+            modes.l(i) = int64(l);
+            modes.m(i) = int64(m);
+            modes.s(i) = int64(s);
+            i=i+1;
+        end
+    end
+end
+polars = ["electric", "magnetic"];
+polarization = polars(modes.s);
+modes = rmfield(modes,'s');
+
+% dummy 'analytical zeros' for e.g. EBCM methods
+% [zerosq, zerosqp] = ndgrid(1:2:30, 1:2:30);
+% zeros  = struct('q', zerosq, 'qp', zerosqp);
+
+% materials
+embedding = struct('relative_permeability', 1.0, ...
+                   'relative_permittivity', 1.33^2);
+particle = struct('relative_permeability', 1.0, ...
+                  'relative_permittivity', repmat(-11.4+1.181i, [Nl,1]));
+
+% geometry
+geometry = struct('radiusxy', 20.0, 'radiusz', 40.0);
+
+scatterer = struct('material', particle, ...
+                  'geometry', geometry);
+
+% details about computation
+
+method_parameters = struct('Lmax', int64(3), ...
+                           'Ntheta', int64(100));
+
+computation = struct('method_parameters', method_parameters);
+% 'analytical_zeros', zeros can be added here
+
+script = convertCharsToStrings(fileread('export_matlab.m'));
+
+% combined information into one struct
+s = struct('tmatrix', tmatrix, ...
+    'embedding', embedding,...
+    'scatterer', scatterer, ...
+    'computation', computation);
+```
+
+
+## Saving to HDF5
+
+```{octave, eval=FALSE}
+addpath(genpath('../easyh5/'));
+```
+
+`saveh5` does most of the work, but we have to write `polarization` and `script` separately as strings within structs seem to trip `easyh5`.
+
+```{octave, eval=FALSE}
+f = 'am.tmat.h5';
+[h5major,h5minor,h5rel] = H5.get_libversion(); % HDF5 version
+matlabv = version ; % Matlab version
+software = sprintf('SMARTIES=1.1, matlab=%s, HDF5=%d.%d.%d',matlabv,h5major,h5minor,h5rel);
+
+saveh5(s, f, 'ComplexFormat', {'r','i'}, 'rootname', '', 'Compression', 'deflate'); 
+
+
+
+% deal with objects manually
+% character vectors, and also 1D vectors, 
+% as easyh5 would store them as 1xN arrays for back-compatibility
+
+h5create(f,'/vacuum_wavelength', length(wavelength), 'Datatype', 'double')
+h5write(f,'/vacuum_wavelength', wavelength)
+
+h5create(f,'/modes/l', length(modes.l), 'Datatype', 'int64')
+h5write(f,'/modes/l', modes.l)
+
+h5create(f,'/modes/m', length(modes.m), 'Datatype', 'int64')
+h5write(f,'/modes/m', modes.m)
+
+h5create(f,'/modes/polarization', length(polarization), 'Datatype', 'string')
+h5write(f,'/modes/polarization', polarization)
+
+% root attributes
+h5writeatt(f, '/', 'name', 'Au prolate spheroid in water');
+h5writeatt(f, '/', 'storage_format_version', 'v1'); 
+h5writeatt(f, '/','description', ...
+    'Computation using SMARTIES, a numerically robust EBCM implementation for spheroids');
+h5writeatt(f, '/','keywords', 'gold, spheroid, ebcm, passive, reciprocal, czinfinity, mirrorxyz');
+
+% object and group attributes
+h5writeatt(f, '/vacuum_wavelength', 'unit', 'nm');
+
+h5writeatt(f, '/embedding', 'keywords', 'non-dispersive');
+h5writeatt(f, '/embedding', 'name', 'H2O, Water');
+
+h5writeatt(f, '/scatterer/material', 'name', 'Au, Gold');
+h5writeatt(f, '/scatterer/material', 'reference', 'Au from Raschke et al 10.1103/PhysRevB.86.235147');
+h5writeatt(f, '/scatterer/material', 'keywords', 'dispersive, plasmonic');
+
+h5writeatt(f, '/scatterer/geometry', 'name', 'homogeneous spheroid with symmetry axis z');
+h5writeatt(f, '/scatterer/geometry', 'unit', 'nm');
+h5writeatt(f, '/scatterer/geometry', 'shape', 'spheroid')
+
+h5writeatt(f, '/computation', 'description', 'Computation using SMARTIES, a numerically robust EBCM implementation for spheroids');
+h5writeatt(f, '/computation', 'name', 'SMARTIES');
+h5writeatt(f, '/computation', 'method', 'EBCM, Extended Boundary Condition Method');
+h5writeatt(f, '/computation', 'software', software);
+
+```
+
+<!-- export the code into standalone file -->
+`r invisible(knitr::purl(xfun::with_ext(knitr::current_input(), "qmd"),output=xfun::with_ext(knitr::current_input(), "m")))`
+

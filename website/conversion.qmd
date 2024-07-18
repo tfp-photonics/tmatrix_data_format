@@ -1,0 +1,40 @@
+---
+title: "Conversion from long format"
+author: "baptiste"
+date: today
+---
+
+
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+library(dplyr)
+library(ggplot2)
+library(grid)
+library(patchwork)
+read_chunk('_utilities.R')
+source("_utilities.R")
+```
+
+
+## Reading long-format T-matrix files
+
+Some programs output T-matrices in long format, similar to the example below:
+
+```{r, echo=FALSE}
+d <- read.table('../utilities/smarties.txt')
+names(d) <- c('s','sp','l','lp','m','mp','Tr','Ti')
+head(d)
+```
+
+Note that one advantage of this format is that only non-zero entries need to be provided, similar to a sparse matrix definition. This is useful for EBCM-like analytical methods where particle symmetries dictate that some T-matrix elements be identically zero (plane of symmetry, axis of symmetry, etc.).
+
+
+## Converting to wide format
+
+The example script [convert_longformat.jl](../utilities/convert_longformat.jl) reads this plain text dataset, converts the indices $(l,m,s)$ to [combined indices](indexing.html) $(u,u')$, and exports the data in the standard `.tmat.h5` format, adding the required metadata.
+
+```{.julia}
+{{< include ../utilities/convert_longformat.jl >}}
+```
+
+
