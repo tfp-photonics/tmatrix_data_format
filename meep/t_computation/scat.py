@@ -1,5 +1,4 @@
 from typing import Tuple
-import h5py
 from numpy.typing import NDArray
 import numpy as np
 from config.config import Config
@@ -19,7 +18,7 @@ from t_computation.parallelize import all_gather_matrix_concatenate
 from sim.sim import do_incident_sim, do_scattered_sim
 from sources.source_factory import get_plane_wave_source
 
- 
+
 def get_start_geometry(c: Config, start_it: int = 0) -> GeometryData:
     if start_it == 0:
         geometry_resolution = np.array([*c.start_geometry.shape]) / c.object_size
@@ -44,6 +43,7 @@ def get_start_geometry(c: Config, start_it: int = 0) -> GeometryData:
         geo_dat = GeometryData.from_hdf(path=c.path, it=start_it)
     return geo_dat
 
+
 def calculate_T(c: Config) -> NDArray:
     geo_dat = get_start_geometry(c)
     eps_grid = np.asarray(geo_dat.eps_grid, dtype=float)
@@ -55,7 +55,7 @@ def calculate_T(c: Config) -> NDArray:
     end_parallel()
     return t_dat.t
 
- 
+
 def core_calc_T(
     c: Config,
     master_ids: Tuple[int],
@@ -74,8 +74,10 @@ def core_calc_T(
         print(f"Simulation id = {ii}")
         rotation_data = get_persistent_sphere_angles(c=c, id=ii)
         rotated_epsgrid = rotate_eps_grid(eps_grid, rotation_data, c.eps_embedding)
-        rot_array = np.array([rotation_data.theta, rotation_data.phi, rotation_data.alpha])
-        rot_matrix.append(rot_array)        
+        rot_array = np.array(
+            [rotation_data.theta, rotation_data.phi, rotation_data.alpha]
+        )
+        rot_matrix.append(rot_array)
         sim_res_sca = do_scattered_sim(
             id=ii,
             c=c,
@@ -105,12 +107,6 @@ def core_calc_T(
         group_id=group_id,
         axis=1,
     )
-    # gathered_rot_matrix = all_gather_matrix_concatenate(
-    #     matrix=rot_matrix,
-    #     master_ids=master_ids,
-    #     group_id=group_id,
-    #     axis=1,
-    # )
     coefs = CoefData(
         incident_matrix=gathered_inc_matrix, scatter_matrix=gathered_sca_matrix
     )

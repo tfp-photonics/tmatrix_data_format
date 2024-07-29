@@ -63,18 +63,12 @@ def get_test_config() -> Config:
         path_output="./output/",
         resolution=10,
         sim_amount_mult=2,
-        load_simulations=False,
         l_max=2,
         material=1.15,
         params={"radius" : 0.4},
         shape="sphere",
-        start_geometry =[
-        mp.Sphere(0.4, center=mp.Vector3(), material=mp.Medium(epsilon=1.15)),
-    ],
-        keywords = "reciprocal, passive, lossless, mirrorxyz, czinfinity",
         eps_embedding = 1.,
         cpu_cores_per_simulation=SIZE,
-        opt_iterations=5,
     )
     return c
 

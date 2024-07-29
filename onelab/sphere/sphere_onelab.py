@@ -149,12 +149,11 @@ for lambda0 in lambdas:
         modetype=("singular", "regular"),
         poltype="parity",
     )
-    print(single)
     tmats.append(single)
 
 
 # Store data in the standard format .tmat.h5
-with h5py.File("sphere_here.tmat.h5", "w") as fobj:
+with h5py.File("sphere_onelab.tmat.h5", "w") as fobj:
     pol = tmats[0].basis.pol
     pol = np.where(pol == 1, "electric", "magnetic")
     tools.base_data(

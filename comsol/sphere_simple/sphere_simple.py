@@ -106,7 +106,7 @@ def run():
             fobj["computation"],
             name="COMSOL",
             description="Using a custom multipole decomposition.",
-            keywords="FEM",
+            keywords="FEM, Finite Element Method",
             program_version="comsol=6.1.0.522",
             meshfile=None,
             # meshfile="mesh1.mphtxt",

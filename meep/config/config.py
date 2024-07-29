@@ -57,6 +57,20 @@ class Config(PersitableDataClass):
     def __post_init__(self):
         Path(self.path).mkdir(parents=True, exist_ok=True)
         object.__setattr__(self, "object_size", np.asarray(self.object_size))
+        if self.start_geometry is None:
+            if c.shape == "sphere":
+                self.start_geometry = mp.Sphere(
+                    c.params["radius"],
+                    center=mp.Vector3(),
+                    material=mp.Medium(epsilon=c.material),
+                )
+            elif c.shape == "cylinder":
+                self.start_geometry = mp.Cylinder(
+                    radius=c.params["radius"],
+                    height=c.params["height"],
+                    center=mp.Vector3(),
+                    material=mp.Medium(epsilon=c.material)
+                )        
         if isinstance(self.start_geometry, list):
             object.__setattr__(
                 self,

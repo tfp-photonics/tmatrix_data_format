@@ -6,9 +6,9 @@ import treams
 import treams.io
 
 mpl.rcParams["lines.linewidth"] = 2.5
-mpl.rcParams["font.size"] = 14
+mpl.rcParams["font.size"] = 18
 
-cyl = treams.io.load_hdf5("cylinder_tio2.h5")
+cyl = treams.io.load_hdf5("../example_data/cylinder_tio2.tmat.h5")
 
 positions = [[-300, 0, 0], [300, 0, 0]]
 cyl_cluster = [
