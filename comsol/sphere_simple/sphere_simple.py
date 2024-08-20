@@ -7,7 +7,9 @@ import numpy as np
 import sys
 sys.path.append('../..')
 sys.path.append('../../..')
-import tmatrix_tools as tools
+import utilities.tmatrix_tools as tools
+import comsol_tools 
+
 def run():
     working_dir = "."
     comsolname = "sphere_simple"
@@ -27,7 +29,7 @@ def run():
         ms_inc,
         pols_inc,
         params,
-    ) = tools.extract_tmatrix_comsol(os.path.join(working_dir, "tmatrix_coeffs.txt"))
+    ) = comsol_tools.extract_tmatrix_comsol(os.path.join(working_dir, "tmatrix_coeffs.txt"))
 
     if np.all(ls == ls_inc) and np.all(ms == ms_inc) and np.all(pols == pols_inc):
         modes_inc = None
@@ -53,7 +55,7 @@ def run():
             funit=funit,
             modes=(ls, ms, pols),
             modes_inc=modes_inc,
-            format_version="draft",
+            format_version="v1",
         )
 
         for index, (name, description, keywords, epsilon, mu, kappa) in enumerate(zip(

@@ -99,14 +99,12 @@ ax1.plot(ref_lambdas, ref_xs, label="New method")
 ax1.legend()
 elements = ["$T_{00}$", "$T_{11}$", "$T_{10}$", "$T_{01}$"]
 for i, t in enumerate(
-    np.array(
         [
             (ref_t00, test_t00),
             (ref_t11, test_t11),
             (ref_t01, test_t01),
             (ref_t10, test_t10),
         ]
-    )
 ):
     ax2.plot(ref_lambdas, t[0].real, label=f"JCM Real({elements[i]})")
     ax2.plot(ref_lambdas, t[0].imag, label=f"JCM Imag({elements[i]})")
@@ -120,12 +118,12 @@ ax1.set_xlabel("$\lambda$ (nm)")
 figpath0 = "cross-section-tmatrix-2-2.png"
 plt.savefig(figpath0)
 print(f"Saved plots in {figpath0}")
-common = np.isclose(test_lambdas[:, None], ref_lambdas)
+common = np.intersect1d(test_lambdas, ref_lambdas) 
 if common.shape == (0,):
     print("The T-matrices were not computed at any coinciding wavelengths")
 else:
-    test_compare = test_xs[np.where(common)[1]]
-    ref_compare = ref_xs[np.where(common)[0]]
+    test_compare = test_xs[np.where(test_lambdas==common)]
+    ref_compare = ref_xs[np.where(ref_lambdas==common)]
     metric_ext = (ref_compare - test_compare) / ref_compare
     wl_compare = test_lambdas[np.where(common)[0]]
     wl_max = wl_compare[np.argmax(metric_ext)]

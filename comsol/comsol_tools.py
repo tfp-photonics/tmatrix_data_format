@@ -34,6 +34,14 @@ def _index_or_append(lst, val):
         lst.append(val)
         return len(lst) - 1
 
+def alter_order(res):
+    res_new = np.zeros_like(res)
+    for i in range(len(res)):
+        res_new[i][1::2, 1::2] = res[i][::2, ::2]
+        res_new[i][::2, ::2] = res[i][1::2, 1::2]
+        res_new[i][::2, 1::2] = res[i][1::2, ::2]
+        res_new[i][1::2, ::2] = res[i][::2, 1::2]
+    return res_new
 
 def _comsol_table(fobj):
     lm_out = []
@@ -41,7 +49,7 @@ def _comsol_table(fobj):
     params = []
     vals = []
     prev = header = sep = None
-    special_names = ("l_out", "m_out", "l_in", "m_in", "p_in", "am (1)", "ap (1)")
+    special_names = ("l_out", "m_out", "l_in", "m_in", "p_in", "ap (1)", "am (1)")
     for line in fobj:
         if line.startswith("%"):
             prev = line
@@ -66,20 +74,25 @@ def _comsol_table(fobj):
             )
         )
     res = np.zeros((len(params), len(lm_out) * 2, len(lmp_in)), complex)
-    firstpol = (lmp_in[0][2] + 1) // 2
-    for i, j, k, am, ap in vals:
-        res[i, 2 * j + 1 - firstpol, k] = ap
-        res[i, 2 * j + firstpol, k] = am
-    p_out = np.array(
-        translate_pols(
-            [(firstpol + i) % 2 for _ in lm_out for i in range(2)], "helicity"
-        )
-    )
+    firstpol = (lmp_in[0][2] + 1) // 2 # -1 -> 0
+    for i, j, k, am, ap in vals:      
+            res[i, 2 * j + 1 - firstpol, k] = ap
+            res[i, 2 * j + firstpol, k] = am
+    res = alter_order(res) 
+
     l_out, m_out = map(np.asarray, zip(*(i for i in lm_out for _ in range(2))))
     l_in, m_in, p_in = map(np.asarray, zip(*lmp_in))
+    p_out = np.array(
+        translate_pols(
+            [(firstpol + 1- i) % 2 for _ in lm_out for i in range(2)], "helicity" 
+        )
+    )    
     p_in = np.array(translate_pols(p_in, "helicity"))
+    p_in_reorder = np.zeros_like(p_in) 
+    p_in_reorder[1::2] = p_in[::2]
+    p_in_reorder[::2] = p_in[1::2]
     params = dict(zip((k for k in header if k not in special_names), zip(*params)))
-    return res, None, l_out, m_out, p_out, l_in, m_in, p_in, params
+    return res, None, l_out, m_out, p_out, l_in, m_in, p_in_reorder, params
 
 
 def extract_tmatrix_comsol(fobj):
