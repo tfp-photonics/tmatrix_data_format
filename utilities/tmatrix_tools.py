@@ -197,13 +197,18 @@ def isotropic_material(
     name,
     description="",
     keywords="",
+    reference="",
+    interpolation="",
     index=None,
     impedance=None,
     epsilon=None,
     mu=None,
 ):
     # _check_name(fobj.parent, "/scatterer/material")
-
+    if reference != "":
+        fobj.attrs["reference"] = reference
+    if interpolation != "":
+        fobj.attrs["interpolation"] = interpolation
     _name_descr_kw(fobj, name, description, keywords)
     if index is impedance is epsilon is mu is None:
         TypeError("missing at least one of: 'index', 'impedance', 'epsilon', 'mu'")
@@ -228,6 +233,8 @@ def anisotropic_material(
     index=None,
     epsilon=None,
     mu=None,
+    reference="",
+    interpolation="",
     index_inner_dims=2,
     epsilon_inner_dims=2,
     mu_inner_dims=2,
@@ -238,6 +245,8 @@ def anisotropic_material(
         name=name,
         description=description,
         keywords=keywords,
+        reference=reference,
+        interpolation=interpolation,
         index=index,
         epsilon=epsilon,
         mu=mu,
@@ -258,16 +267,20 @@ def biisotropic_material(
     name,
     description="",
     keywords="",
+    reference="",
+    interpolation="",
     epsilon=None,
     mu=None,
     kappa=None,
-    chi=None,
+    chi=None
 ):
     isotropic_material(
         fobj,
         name=name,
         description=description,
         keywords=keywords,
+        reference=reference,
+        interpolation=interpolation,
         epsilon=epsilon,
         mu=mu,
     )
@@ -285,6 +298,8 @@ def bianisotropic_material(
     name,
     description="",
     keywords="",
+    reference="",
+    interpolation="",
     epsilon=None,
     mu=None,
     kappa=None,
@@ -300,6 +315,8 @@ def bianisotropic_material(
         name=name,
         description=description,
         keywords=keywords,
+        reference=reference,
+        interpolation=interpolation,
         epsilon=epsilon,
         mu=mu,
         kappa=kappa,
@@ -322,12 +339,17 @@ def bianisotropic_material_from_tensor(
     name,
     description="",
     keywords="",
+    reference="",
+    interpolation="",
     bianisotropy,
     inner_dims=2,
     coordinates="Cartesian",
 ):
     _check_name(fobj.parent, "/materials")
-
+    if reference != "":
+        fobj.attrs["reference"] = reference
+    if interpolation != "":
+        fobj.attrs["interpolation"] = interpolation
     _name_descr_kw(fobj, name, description, keywords)
     fobj["bianisotropy"] = np.asarray(bianisotropy)
     fobj["bianisotropy"].attrs["inner_dims"] = int(inner_dims)
@@ -382,10 +404,11 @@ def computation_data(
 GEOMETRY_PARAMS = {
     "sphere": ("radius",),
     "ellipsoid": ("radiusx", "radiusy", "radiusz"),
+    "superellipsoid": ("radiusx", "radiusy", "radiusz", "e_parm", "n_parm"),
     "spheroid": ("radiusxy", "radiusz"),
     "cylinder": ("radius", "height"),
-    "cone": ("radius", "height"),
-    "torus": ("major_radius", "minor_radius"),
+    "cone": ("radius_top", "radius_bottom", "height"),
+    "torus": ("radius_major", "radius_minor"),
     "cube": ("length",),
     "rectangular_cuboid": ("lengthx", "lengthy", "lengthz"),
     "helix": (
@@ -414,7 +437,7 @@ def geometry_shape(
 
     _name_descr_kw(fobj, name, description, keywords)
     for param in GEOMETRY_PARAMS[shape]:
-        fobj[param] = np.asarray(params[param])
+        fobj[param] = params[param]
     fobj.attrs["shape"] = str(shape)
     if meshfile is not None:
         mesh_data(fobj, meshfile, lunit)
