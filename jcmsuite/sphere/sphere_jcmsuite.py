@@ -38,9 +38,8 @@ def run():
     uof = 1e12  # unit of frequency (1 = Hz, 1e12 = THz)
     freqs = np.linspace(400, 750, 10)
     c0 = 299792458 / (uof * keys["uol"])  # speed of light
-    print("freqs", freqs)
-    material_names = ["Vacuum", "Custom"]
-    material_descriptions = ["", ""]
+    material_names = ["Vacuum, Air", "Custom"]
+    material_descriptions =  ["", "A constant refractive index of 2. is used."]
     material_keywords = ["non-dispersive", "non-dispersive"]
 
     jcmwave.geo(".", keys, jcmt_pattern=jcmt_pattern, working_dir=working_dir)
@@ -114,6 +113,16 @@ def run():
                     epsilon=epsilon,
                     mu=mu
                 )
+                fobj.create_group(f"{scatname}/geometry")
+                fobj[f"{scatname}/geometry"].attrs["unit"] = tools.LENGTHS[keys["uol"]]
+                tools.geometry_shape(
+                    fobj[f"{scatname}/geometry"],
+                    shape="sphere",
+                    params=keys,
+                    meshfile=None,
+                    lunit=tools.LENGTHS[keys["uol"]],
+                    working_dir=working_dir,
+                )
         fobj.create_group("computation/files")
         tools.computation_data(
             fobj["computation"],
@@ -123,8 +132,7 @@ def run():
             software=f"jcmsuite={jcmwave.__private.version}, python={sys.version.split()[0]}, numpy={np.__version__}, h5py={h5py.__version__}",
             keys=keys_method,
             meshfile=os.path.join(working_dir, "grid.jcm"),
-            lunit=tools.LENGTHS[keys["uol"]],
-            
+            lunit=tools.LENGTHS[keys["uol"]]            
         )
         jcm_tools.jcm_files(
             fobj["computation"],
@@ -135,27 +143,7 @@ def run():
             fobj[f"computation/files/{os.path.basename(__file__)}"] = scriptfile.read()
         with open(meshparser.__file__, "r") as scriptfile:
             fobj[f"computation/files/{os.path.basename(meshparser.__file__)}"] = scriptfile.read()
-
-        fobj.create_group(f"{scatname}/geometry")
-        mesh = meshparser.Mesh(
-            {
-                domain: domain.tag
-                for domain in meshparser.read(
-                    os.path.join(working_dir, "grid.jcm")
-                ).domains
-                if domain.tag > 1 and domain.dim == 2 # change to 3 for 3D
-            }
-        )
-        fobj[f"{scatname}/geometry"].attrs["unit"] = tools.LENGTHS[keys["uol"]]
-        tools.geometry_shape(
-            fobj[f"{scatname}/geometry"],
-            shape="sphere",
-            params=keys,
-            meshfile=mesh,
-            lunit=tools.LENGTHS[keys["uol"]],
-            working_dir=working_dir,
-        )
-        fobj["mesh.msh"] = h5py.SoftLink("/computation/mesh.msh")
+        fobj["mesh"] = h5py.SoftLink("/computation/mesh.msh")
 
 
 if __name__ == "__main__":

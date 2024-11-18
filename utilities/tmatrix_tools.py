@@ -114,13 +114,6 @@ def translate_pols(pols, poltype):
     return [dct[pol] for pol in pols]
 
 
-def _get_postprocess(result, name):
-    processes = [process for process in result if process.get("title", "") == name]
-    if len(processes) != 1:
-        raise ValueError(f"can't find post-process '{name}'")
-    return processes[0]
-
-
 def _name_descr_kw(fobj, name, description="", keywords=""):
     for key, val in [
         ("name", name),

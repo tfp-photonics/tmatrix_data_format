@@ -3,13 +3,15 @@
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-jcm_root = '/scratch/local/nasadova/JCMsuite' # -> set your JCMROOT installation directory
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+jcm_root = '' # -> set your JCMROOT installation directory
 sys.path.append(os.path.join(jcm_root, 'ThirdPartySupport', 'Python'))
 import h5py
 import jcmwave
 import numpy as np
 import meshgen as meshparser
-import tmatrix_tools
+import utilities.tmatrix_tools as tools
+import jcm_tools
 
 def run():
     # Setup
@@ -59,16 +61,16 @@ def run():
     results, logs = jcmwave.daemon.wait(jobids)
     jcmwave.daemon.shutdown()
 
-    tmats, _, ls, ms, pols = tmatrix_tools.extract_tmatrix_jcm(results)
+    tmats, _, ls, ms, pols = jcm_tools.extract_tmatrix_jcm(results)
     
-    ls_inc, ms_inc, pols_inc = tmatrix_tools.jcm_defaultmodes(keys["degree_max"])
-    tmats, pols, pols_inc = tmatrix_tools.jcm_pol_reorder(tmats, pols, pols_inc, keys["degree_max"])
+    ls_inc, ms_inc, pols_inc = jcm_tools.jcm_defaultmodes(keys["degree_max"])
+    tmats, pols, pols_inc = jcm_tools.jcm_pol_reorder(tmats, pols, pols_inc, keys["degree_max"])
     if np.all(ls == ls_inc) and np.all(ms == ms_inc) and np.all(pols == pols_inc):
         modes_inc = None
     else:
         modes_inc = ls, ms, pols
     with h5py.File(jcmt_pattern + "_tio2.tmat.h5", "w") as fobj:
-        tmatrix_tools.base_data(
+        tools.base_data(
             fobj,
             tmatrices=tmats,
             name="Cylinder",
@@ -79,7 +81,7 @@ def run():
             keywords="czinfinity,mirrorxyz,passive, reciprocal",
             freqs=freqs,
             ftype="frequency",
-            funit=tmatrix_tools.FREQUENCIES[uof],
+            funit=tools.FREQUENCIES[uof],
             modes=(ls, ms, pols),
             modes_inc=modes_inc,
             format_version="v1",
@@ -93,7 +95,7 @@ def run():
         )):
             if index == 0:
                 fobj.create_group(f"embedding")
-                tmatrix_tools.isotropic_material(
+                tools.isotropic_material(
                     fobj[f"embedding"],
                     name=name,
                     description=description,
@@ -108,7 +110,7 @@ def run():
                     scatname = f"scatterer_{index}"
                 fobj.create_group(f"{scatname}")
                 fobj.create_group(f"{scatname}/material")
-                tmatrix_tools.isotropic_material(
+                tools.isotropic_material(
                     fobj[f"{scatname}/material"],
                     name=name,
                     description=description,
@@ -116,18 +118,28 @@ def run():
                     epsilon=epsilon,
                     mu=mu
                 )
+                fobj.create_group(f"{scatname}/geometry")
+                fobj[f"{scatname}/geometry"].attrs["unit"] = tools.LENGTHS[keys["uol"]]
+                tools.geometry_shape(
+                    fobj[f"{scatname}/geometry"],
+                    shape="cylinder",
+                    params=keys,
+                    meshfile=None,
+                    lunit=tools.LENGTHS[keys["uol"]],
+                    working_dir=working_dir,
+                )
         fobj.create_group("computation/files")
-        tmatrix_tools.computation_data(
+        tools.computation_data(
             fobj["computation"],
             name="JCMsuite",
             description="Using the built-in post-process 'MultipoleExpansion'. Rotationally symmetric 3D problem is computed in 2D",
             method="FEM, Finite Element Method",
             keys=keys_method,
-            program_version=f"jcmsuite={jcmwave.__private.version}, python={sys.version.split()[0]}, numpy={np.__version__}, h5py={h5py.__version__}",
+            software=f"jcmsuite={jcmwave.__private.version}, python={sys.version.split()[0]}, numpy={np.__version__}, h5py={h5py.__version__}",
             meshfile=os.path.join(working_dir, "grid.jcm"),
-            lunit=tmatrix_tools.LENGTHS[keys["uol"]],
+            lunit=tools.LENGTHS[keys["uol"]],
         )
-        tmatrix_tools.jcm_files(
+        jcm_tools.jcm_files(
             fobj["computation"],
             jcmt_pattern,
             ".",
@@ -136,25 +148,6 @@ def run():
             fobj[f"computation/files/{os.path.basename(__file__)}"] = scriptfile.read()
         with open(meshparser.__file__, "r") as scriptfile:
             fobj[f"computation/files/{os.path.basename(meshparser.__file__)}"] = scriptfile.read()
-        fobj.create_group(f"{scatname}/geometry")
-        mesh = meshparser.Mesh(
-            {
-                domain: domain.tag
-                for domain in meshparser.read(
-                    os.path.join(working_dir, "grid.jcm")
-                ).domains
-                if domain.tag > 1 and domain.dim == 2 # change to 3 for 3D
-            }
-        )
-        fobj[f"{scatname}/geometry"].attrs["unit"] = tmatrix_tools.LENGTHS[keys["uol"]]
-        tmatrix_tools.geometry_shape(
-            fobj[f"{scatname}/geometry"],
-            shape="cylinder",
-            params=keys,
-            meshfile=mesh,
-            lunit=tmatrix_tools.LENGTHS[keys["uol"]],
-            working_dir=working_dir,
-        )
         fobj["mesh"] = h5py.SoftLink("/computation/mesh.msh")
 
 
