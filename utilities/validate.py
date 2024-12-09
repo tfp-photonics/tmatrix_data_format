@@ -24,21 +24,30 @@ def visitfunc(f, x):
         pass
 
 
-def czinf(tmat, js, ms, taus):
+def czinf(tmat, js, ms, taus, js_out=None, ms_out=None, taus_out=None):
     """
     Check rotational symmetry (assume z is the axis of rotation)
     tmats, js, ms, taus
     """
     tol = 0
-    ps = np.zeros(len(taus), dtype=int)
-    ps[taus == taus[0]] = 1
-    ps[taus != taus[0]] = 0
+    def tausps(taus):
+        ps = np.zeros(len(taus), dtype=int)
+        ps[taus == taus[0]] = 1
+        ps[taus != taus[0]] = 0
+        return ps
+    if js_out is None:
+        ms_out = ms
+        js_out = js
+        taus_out = taus
+    ps = tausps(taus)
+    ps_out = tausps(taus_out)
     m_out = ms + np.zeros_like(ms[:, None], dtype=int)
-    m_in = ms[:, None] + np.zeros_like(ms)
+    m_in = ms[:, None] + np.zeros_like(ms_out)
     p_out = ps[None, :] + np.zeros_like(ps[:, None], dtype=int)
-    p_in = ps[:, None] + np.zeros_like(ps, dtype=int)
-    l_in = js[:, None] + np.zeros_like(js)
-    l_out = js + np.zeros_like(js[:, None])
+    p_in = ps[:, None] + np.zeros_like(ps_out, dtype=int)
+    l_out = js_out + np.zeros_like(js[:, None])
+    l_in = js[:, None] + np.zeros_like(js_out)
+    
 
     tnew = np.zeros_like(tmat)
     for i in range(tmat.shape[0]):
@@ -76,60 +85,87 @@ def passive(T):
     return 10**-i
 
 
-def mirrorxy(tmat, js, ms, taus):
-    ts = np.zeros(len(taus), dtype=int)
-    ts[taus == b"electric"] = -1
-    ts[taus == b"magnetic"] = 1  # ?
-    ms_out = ms + np.zeros_like(ms[:, None], dtype=int)
-    ms_in = ms[:, None] + np.zeros_like(ms)
-    t_out = ts[None, :] + np.zeros_like(ts[:, None], dtype=int)
-    t_in = ts[:, None] + np.zeros_like(ts, dtype=int)
-    js_in = js[:, None] + np.zeros_like(js)
-    js_out = js + np.zeros_like(js[:, None])
+def mirrorxy(tmat, js, ms, taus, js_out=None, ms_out=None, taus_out=None):
+    if js_out is None:
+        ms_out = ms
+        js_out = js
+        taus_out = taus
+    def tausps(taus):
+        ps = np.zeros(len(taus), dtype=int)
+        ps[taus == b"electric"] = -1
+        ps[taus == b"magnetic"] = 1  
+        return ps
+    ts = tausps(taus)
+    ts_out = tausps(taus_out)
+    
+    ms_out = ms_out + np.zeros_like(ms[:, None], dtype=int)
+    ms_in = ms[:, None] + np.zeros_like(ms_out)
+    t_out = ts_out[None, :] + np.zeros_like(ts[:, None], dtype=int)
+    t_in = ts[:, None] + np.zeros_like(ts_out, dtype=int)
+    js_in = js[:, None] + np.zeros_like(js_out)
+    js_out = js_out + np.zeros_like(js[:, None])
     factor = (-1.0) ** (js_in + js_out + ms_in + ms_out) * t_in * t_out
     tnew = factor * tmat
     tol = metric(tnew, tmat)
     return tol
 
 
-def pmirrorxy(tmat, js, ms, taus):
-    l_in = js[:, None] + np.zeros_like(js)
-    l_out = js + np.zeros_like(js[:, None])
-    m_out = ms + np.zeros_like(ms[:, None], dtype=int)
-    m_in = ms[:, None] + np.zeros_like(ms)
-    factor = (-1.0) ** (l_in + l_out + m_in + m_out)
-    return pmirrorxyxz(tmat, js, ms, taus, factor)
+def pmirrorxy(tmat, js, ms, taus, js_out=None, ms_out=None, taus_out=None):
+    if js_out is None:
+        ms_out = ms
+        js_out = js
+        taus_out = taus
+    ls_in = js[:, None] + np.zeros_like(js_out)
+    ls_out = js_out + np.zeros_like(js[:, None])
+    ms_out = ms_out + np.zeros_like(ms[:, None], dtype=int)
+    ms_in = ms[:, None] + np.zeros_like(ms_out)
+    factor = (-1.0) ** (ls_in + ls_out + ms_in + ms_out)
+    return pmirrorxyxz(tmat, js, ms, taus, factor, js_out, ms_out, taus_out)
 
 
-def pmirrorxz(tmat, js, ms, taus):
-    m_out = ms + np.zeros_like(ms[:, None], dtype=int)
-    m_in = ms[:, None] + np.zeros_like(ms)
+def pmirrorxz(tmat, js, ms, taus, js_out=None, ms_out=None, taus_out=None):
+    if js_out is None:
+        ms_out = ms
+        js_out = js
+        taus_out = taus
+    m_out = ms_out + np.zeros_like(ms[:, None], dtype=int)
+    m_in = ms[:, None] + np.zeros_like(ms_out)
     factor = (-1.0) ** (m_in + m_out)
-    return pmirrorxyxz(tmat, js, ms, taus, factor)
+    return pmirrorxyxz(tmat, js, ms, taus, factor, js_out, ms_out, taus_out)
 
 
-def pmirrorxyxz(tmat, js, ms, taus, factor):
+def pmirrorxyxz(tmat, js, ms, taus, factor, js_out=None, ms_out=None, taus_out=None ):
+    if js_out is None:
+        ms_out = ms
+        js_out = js
+        taus_out = taus
     tol = 0
     N_J = js.max()
     ts = np.zeros(len(taus), dtype=int)
-    ts[taus == b"positive"] = -1
-    ts[taus == b"negative"] = 1  # ??????????? IS IT SO?
+    def tausps(taus):
+        ps = np.zeros(len(taus), dtype=int)
+        ps[taus == b"positive"] = 1
+        ps[taus == b"negative"] = -1  
+        return ps
+    ts = tausps(taus)
+    ts_out = tausps(taus_out)
     m_out = ms + np.zeros_like(ms[:, None], dtype=int)
-    m_in = ms[:, None] + np.zeros_like(ms)
-    p_out = ts[None, :] + np.zeros_like(ts[:, None], dtype=int)
-    p_in = ts[:, None] + np.zeros_like(ts, dtype=int)
-    l_in = js[:, None] + np.zeros_like(js)
-    l_out = js + np.zeros_like(js[:, None])
+    m_in = ms[:, None] + np.zeros_like(ms_out)
+    p_out = ts_out[None, :] + np.zeros_like(ts[:, None], dtype=int)
+    p_in = ts[:, None] + np.zeros_like(ts_out, dtype=int)
+    l_in = js[:, None] + np.zeros_like(js_out)
+    l_out = js_out + np.zeros_like(js[:, None])
     n_range = 2 * (2 * np.arange(1, N_J) + 1)
-    Nrng = np.concatenate(([0], n_range, [len(js) + 1]))
+    Nrng = np.concatenate(([0], n_range, [len(js_out) + 1]))
+    Nrng2 = np.concatenate(([0], n_range, [len(js) + 1]))
     tnew_sum = 0
     for i, ni in enumerate(Nrng[:-1]):
-        for j, nj in enumerate(Nrng[:-1]):
-            tsubmat = tmat[ni : Nrng[i + 1], nj : Nrng[j + 1]]
-            p_inc = p_in[ni : Nrng[i + 1], nj : Nrng[j + 1]]
-            p_outc = p_out[ni : Nrng[i + 1], nj : Nrng[j + 1]]
-            m_inc = m_in[ni : Nrng[i + 1], nj : Nrng[j + 1]]
-            m_outc = m_out[ni : Nrng[i + 1], nj : Nrng[j + 1]]
+        for j, nj in enumerate(Nrng2[:-1]):
+            tsubmat = tmat[ni : Nrng[i + 1], nj : Nrng2[j + 1]]
+            p_inc = p_in[ni : Nrng[i + 1], nj : Nrng2[j + 1]]
+            p_outc = p_out[ni : Nrng[i + 1], nj : Nrng2[j + 1]]
+            m_inc = m_in[ni : Nrng[i + 1], nj : Nrng2[j + 1]]
+            m_outc = m_out[ni : Nrng[i + 1], nj : Nrng2[j + 1]]
             t_new = np.zeros_like(tsubmat, dtype=complex)
             t_new[::2, ::2] = tsubmat[1::2, 1::2]
             t_new[1::2, ::2] = tsubmat[::2, 1::2]
@@ -141,19 +177,20 @@ def pmirrorxyxz(tmat, js, ms, taus, factor):
     return tol
 
 
-def pmirroryz(tmat, js, ms, lams):
+def pmirroryz(tmat, js, ms, lams,  js_out=None, ms_out=None, lams_out=None):
     tol = 0
-    N_J = js.max()
+    N_J1 = js.max()
+    N_J2 = js_out.max()
     MirrorMat_list = (
         []
     )  # Creates a list of mirror reflection transformation matrices for each angular momentum J / but without helicity change or tau-multiplication
     tnew_sum = 0
     for lam1 in [b"positive", b"negative"]:
-        for J1 in range(1, N_J + 1):
+        for J1 in range(1, N_J1 + 1):
             mindex1 = np.multiply(lams == lam1, js == J1)
             mindex1_mirror = np.multiply(np.logical_not(lams == lam1), js == J1)
             for lam2 in [b"positive", b"negative"]:
-                for J2 in range(1, N_J + 1):
+                for J2 in range(1, N_J2 + 1):
                     mindex2 = np.multiply(lams == lam2, js == J2)
                     mindex2_mirror = np.multiply(np.logical_not(lams == lam2), js == J2)
 
@@ -177,24 +214,32 @@ def pmirroryz(tmat, js, ms, lams):
     return tol
 
 
-def mirrorxz(tmats, js, ms, taus):
-
+def mirrorxz(tmats, js, ms, taus, js_out=None, ms_out=None, taus_out=None):
+    if js_out is None:
+        ms_out = ms
+        js_out = js
+        taus_out = taus
     tol = 0
     N_J = js.max()
-    ts = np.zeros(len(taus), dtype=int)
-    ts[taus == b"electric"] = -1
-    ts[taus == b"magnetic"] = 1  # ??????????? IS IT SO?
+    def tausps(taus):
+        ps = np.zeros(len(taus), dtype=int)
+        ps[taus == b"electric"] = -1
+        ps[taus == b"magnetic"] = 1  
+        return ps
+    ts = tausps(taus)
+    ts_out = tausps(taus_out)
     m_out = ms + np.zeros_like(ms[:, None], dtype=int)
-    m_in = ms[:, None] + np.zeros_like(ms)
-    p_out = ts[None, :] + np.zeros_like(ts[:, None], dtype=int)
-    p_in = ts[:, None] + np.zeros_like(ts, dtype=int)
-    l_in = js[:, None] + np.zeros_like(js)
-    l_out = js + np.zeros_like(js[:, None])
+    m_in = ms[:, None] + np.zeros_like(ms_out)
+    p_out = ts_out[None, :] + np.zeros_like(ts[:, None], dtype=int)
+    p_in = ts[:, None] + np.zeros_like(ts_out, dtype=int)
+    l_in = js[:, None] + np.zeros_like(js_out)
+    l_out = js_out + np.zeros_like(js[:, None])
     n_range = 2 * (2 * np.arange(1, N_J) + 1)
-    Nrng = np.concatenate(([0], n_range, [len(js) + 1]))
+    Nrng = np.concatenate(([0], n_range, [len(js_out) + 1]))
+    Nrng2 = np.concatenate(([0], n_range, [len(js) + 1]))
     tnew_sum = 0
     for i, ni in enumerate(Nrng[:-1]):
-        for j, nj in enumerate(Nrng[:-1]):
+        for j, nj in enumerate(Nrng2[:-1]):
             tsubmat = tmats[ni : Nrng[i + 1], nj : Nrng[j + 1]]
             p_inc = p_in[ni : Nrng[i + 1], nj : Nrng[j + 1]]
             p_outc = p_out[ni : Nrng[i + 1], nj : Nrng[j + 1]]
@@ -213,8 +258,12 @@ def mirrorxz(tmats, js, ms, taus):
     return tol
 
 
-def mirroryz(tmats, js, ms, taus):
-    N_J = js.max()
+def mirroryz(tmats, js, ms, taus,  js_out=None, ms_out=None, taus_out=None):
+    if js_out is None:
+        ms_out = ms
+        js_out = js
+        taus_out = taus
+    N_J = np.array([js.max(), js_out.max()]).max()
     import quaternionic
     import spherical
 
@@ -275,18 +324,23 @@ def mirroryz(tmats, js, ms, taus):
     return tol
 
 
-def reciprocal_check(tmat, l, m, p):
-    p = np.where(p == p[0], 1, 0)
-    m_out = m + np.zeros_like(m[:, None])
-    m_in = m[:, None] + np.zeros_like(m)
-    p_out = p + np.zeros_like(p[:, None])
-    p_in = p[:, None] + np.zeros_like(p)
-    l_in = l[:, None] + np.zeros_like(l)
-    l_out = l + np.zeros_like(l[:, None])
+def reciprocal_check(tmat, l, m, p, l_out=None, m_out=None, p_out=None):
+    if l_out is None:
+        l_out = l
+        m_out = m
+        p_out = p
+    p = np.where(p == p[0], 1, 0)    
+    p_out = np.where(p_out == p_out[0], 1, 0)
+    m_out = m_out + np.zeros_like(m[:, None])
+    m_in = m[:, None] + np.zeros_like(m_out)
+    p_out = p_out + np.zeros_like(p[:, None])
+    p_in = p[:, None] + np.zeros_like(p_out)
+    l_in = l[:, None] + np.zeros_like(l_out)
+    l_out = l_out + np.zeros_like(l[:, None])
     tmat_reorder = np.zeros_like(tmat)
     for i in range(tmat.shape[0]):
         for j in range(
-            tmat.shape[0]
+            tmat.shape[-1]
         ):  # This is the one that's true for global mats, so the correct one
             bools = (
                 (m_in == -m_out[i, j])
@@ -304,9 +358,19 @@ def reciprocal_check(tmat, l, m, p):
 
 
 def validate_hdf5_file(filepath):
+    """
+    Validates the HDF5 file by performing the following checks:
+    - Presence of mandatory groups and datasets.
+    - Correctness of attributes (e.g., units, polarization).
+    - Compliance with physical properties (e.g., symmetry, reciprocity).
+    """
     gr = []
     dt = []
-    Groups = ["computation", "scatterer", "embedding", "modes"]
+    Groups = ["computation", "embedding", "modes"]
+    dynamic_group_patterns = {
+        "scatterer": r"scatterer(_\d+)?",  # Matches 'scatterer', 'scatterer_0', etc.
+    }
+    
     Datasets = np.array(
         [
             "tmatrix",
@@ -315,7 +379,7 @@ def validate_hdf5_file(filepath):
             "angular_vacuum_wavenumber",
             "frequency",
             "angular_frequency",
-            "mesh",
+            #"mesh",
         ]
     )
     Equiv = np.array(
@@ -333,21 +397,27 @@ def validate_hdf5_file(filepath):
         for key in f.keys():
             try:
                 f[key]
-            except:
-                print(f" Entry {key} does not open")
-                continue
+            except OSError as e:
+                raise OSError(f"Entry {key} could not be opened: {e}")
             if isinstance(f[key], h5py.Group):
-                gr.append(key)
+                if key in dynamic_group_patterns:
+                    pattern = dynamic_group_patterns[key]
+                    if not any(re.fullmatch(pattern, existing_group) for existing_group in gr):
+                        gr.append(key)
+                else:
+                    if key not in gr:
+                        gr.append(key)
             elif isinstance(f[key], h5py.Dataset):
                 dt.append(key)
                 if key in Equiv:
+                    fr_key = key
                     if "unit" not in f[key].attrs.keys():
                         raise ValueError(
-                            "Unit of frequency (wavelength etc) has to be given"
+                            "Unit of frequency (wavelength etc.) has to be given"
                         )
                     if not isinstance(f[key].attrs["unit"], str):
                         raise TypeError(
-                            "Unit of frequency (wavelength etc) has to be a string"
+                            "Unit of frequency (wavelength etc.) has to be a string"
                         )
                     xunit = f[key].attrs["unit"]
                     if dt == "frequency":
@@ -364,73 +434,133 @@ def validate_hdf5_file(filepath):
         if bool(set(Equiv) & set(dt)):
             dt.extend(Equiv)
 
-        gr_left = np.setdiff1d(Groups, gr, assume_unique=False)
+        gr_left = list(np.setdiff1d(Groups, gr, assume_unique=False))
         dt_left = np.setdiff1d(Datasets, dt, assume_unique=False)
+        for group, pattern in dynamic_group_patterns.items():
+            if not any(re.fullmatch(pattern, g) for g in gr):
+                gr_left.append(group)
         if len(gr_left):
-            # raise NameError(f'The following mandatory groups are not present:', *gr_left)
-            print(f"The following mandatory groups are not present:", *gr_left)
+            raise NameError(f"The following mandatory groups are not present: {', '.join(gr_left)}")
         if len(dt_left):
-            # raise NameError(f'The following mandatory datasets are not present:', *dt_left)
-            print(f"The following mandatory datasets are not present:", *dt_left)
+            raise NameError(f"The following mandatory groups are not present: {', '.join(dt_left)}")
 
-        # CHECK ORDER IS THE SAME WITH T-MATRIX DIMENSION
-        sizel = np.array(f["modes"]["l"]).max()
-        if "index" not in f["modes"].keys():
-            num = 1
+
+        
+        def check_pol_order(p):
+            """
+            Check polarization ordering and type
+            """
+            
+            if (b"electric" in p) & (b"magnetic" in p):
+                # if not (p[:int(len(p)/2)] == b'electric').all() &  (p[int(len(p)/2):] == b'magnetic').all():
+                if not (p[::2] == b"electric").all() & (p[1::2] == b"magnetic").all():
+                    raise ValueError(
+                        f"Polarization ordering does not follow the accepted convention: 'electric' (corresponding to 'tm'), 'magnetic' (corresponding to 'te') alternating sequence"
+                    )
+            elif (b"positive" in p) & ("negative" in p):
+                if not (p[::2] == b"positive").all() & (p[1::2] == b"negative").all():
+                    raise ValueError(
+                        "Polarization ordering does not follow the accepted convention: positive, negative alternating sequence"
+                    )
+            else:
+                raise ValueError(
+                    "The accepted entries for polarization are: 'electric' and 'magnetic' or 'positive' 'negative'."
+                )
+
+        
+
+        def lm_match(l, m):
+            """Check m and l ordering 
+            """
+            mm = [li for lm in np.unique(l) for li in range(-lm, lm + 1)]
+            mm = np.repeat(mm, 2)
+            if not (m == mm).all():
+                raise ValueError(f"The ordering in m does not match the correct one: {mm}")
+
+        
+        def ltmat_match(tmat, l_inc, l_sca=None):
+            """
+            Check correspondence of the T-matrix dimension and the multipole order
+            """
+            
+            if l_sca is None:
+                l_sca = l_inc
+
+            sizel_inc = l_inc.max()
+            sizel_sca = l_sca.max()
+            if "index" not in f["modes"].keys():
+                num = 1
+            else:
+                num = np.max(f["modes/index"][...]) + 1
+            tmatsize_inc = 2 * sizel_inc * (sizel_inc + 2) * num
+            tmatsize1_inc = tmat.shape[-1]
+            tmatsize_sca = 2 * sizel_sca * (sizel_sca + 2) * num
+            tmatsize1_sca = tmat.shape[-2]
+            if not (tmatsize_inc == tmatsize1_inc) | (tmatsize_sca == tmatsize1_sca):
+                raise ValueError(f"The dimensions of the T-matrix does not correspond to declared modes: ({tmatsize_sca}, {tmatsize_inc}) vs ({tmatsize1_sca}, {tmatsize1_inc}).")
+        
+        #CHECK T-MATRIX SIZE
+        tmat =  f["tmatrix"][...]
+        if tmat.ndim == 2:
+            tmat = tmat[None, :, :] 
+        if tmat.ndim > 3:
+            raise ValueError("Maximum dimension of the T-matrix in a single file is 3")
         else:
-            num = np.max(f["modes/index"][...])
-        tmatsize = 2 * sizel * (sizel + 2) * num
-        tmatsize1 = f["tmatrix"][...].shape[-1]
-        if not (tmatsize == tmatsize1):
-            raise ValueError("The modes should include only integer types.")
+            if len(np.atleast_1d(f[fr_key][...])) != len(tmat):
+                raise ValueError(f"The outer dimension of the T-matrix stands for the spectral dependence, but it does not match the dimension of the frequency dataset: {len(f[fr_key])} and {len(tmat)}")  
+        if "l" in f["modes"].keys() and "m" in f["modes"].keys()  and "polarization" in f["modes"].keys():
+            l = f["modes"]["l"][...]
+            m = f["modes"]["m"][...]
+            p = f["modes"]["polarization"][...]
+            if not np.issubdtype(l.dtype, np.integer):
+                raise TypeError("'l' must contain only integer types.")
+            if not np.issubdtype(m.dtype, np.integer):
+                raise TypeError("'m' must contain only integer types.")
+            check_pol_order(p)
+            lm_match(l, m)
+            ltmat_match(tmat, l)
 
-        # CHECK IF M AND L ARE IN CORRECT ORDER AND TYPE:
-        m = f["modes"]["m"][...]
-        l = f["modes"]["l"][...]
-        p = f["modes"]["polarization"][...]
-
-        if not (
-            np.issubdtype(l.dtype, np.integer) & np.issubdtype(m.dtype, np.integer)
+        elif (
+            "l_incident" in f["modes"] and "l_scattered" in f["modes"] and
+            "m_incident" in f["modes"] and "m_scattered" in f["modes"]
         ):
-            raise TypeError("The orders l and m  should include only integer types.")
-
-        if (b"electric" in p) & (b"magnetic" in p):
-            # if not (p[:int(len(p)/2)] == b'electric').all() &  (p[int(len(p)/2):] == b'magnetic').all():
-            if not (p[::2] == b"electric").all() & (p[1::2] == b"magnetic").all():
-                raise ValueError(
-                    f"Polarization ordering does not follow the accepted convention: 'electric' ('tm'), 'magnetic' ('te') alternating sequence"
-                )
-
-        elif (b"positive" in p) & ("negative" in p):
-            if not (p[::2] == b"positive").all() & (p[1::2] == b"negative").all():
-                raise ValueError(
-                    "Polarization ordering does not follow the accepted convention: positive , negative alternating sequence"
-                )
-        else:
-            raise ValueError(
-                "The accepted entries are: 'electric' and 'magnetic' or 'positive' 'negative'."
-            )
-
-        mm = [li for lm in np.unique(l) for li in range(-lm, lm + 1)]
-        mm = np.repeat(mm, 2)
-
-        if not (m == mm).all():
-            print("The ordering in m does not match the correct one:", mm)
+            l_incident = f["modes"]["l_incident"][...]
+            l_scattered = f["modes"]["l_scattered"][...]
+            m_incident = f["modes"]["m_incident"][...]
+            m_scattered = f["modes"]["m_scattered"][...]
+            p_incident = f["modes"]["polarization_incident"][...]
+            p_scattered = f["modes"]["polarization_scattered"][...]
+            if not np.issubdtype(l_incident.dtype, np.integer):
+                raise TypeError("'l_incident' must contain only integer types.")
+            if not np.issubdtype(l_scattered.dtype, np.integer):
+                raise TypeError("'l_scattered' must contain only integer types.")
+            if not np.issubdtype(m_incident.dtype, np.integer):
+                raise TypeError("'m_incident' must contain only integer types.")
+            if not np.issubdtype(m_scattered.dtype, np.integer):
+                raise TypeError("'m_scattered' must contain only integer types.")
+            check_pol_order(p_incident)
+            check_pol_order(p_scattered)
+            lm_match(l_incident, m_incident)
+            lm_match(l_scattered, m_scattered)
+            ltmat_match(tmat, l_incident, l_scattered)
 
         # CHECK MESH PRESENCE
-        if not any(
-            re.compile(r"mesh").search(key) for key in f["computation"].keys()
-        ) | any(
-            re.compile(r"mesh").search(key) for key in f["scatterer/geometry/"].keys()
-        ):
-            print("Mesh is not available")
+        if "keywords" in f["computation"].attrs:
+            if "semi-analytical" in f["computation"].attrs["keywords"]:
+                pass
+        else:
+            if not any(
+                "mesh" in key for key in f["computation"].keys()
+            ):
+                for group_name in f.keys():
+                    if "scatterer" in group_name: 
+                        if not any("mesh" in key for key in f[group_name].keys()):  
+                            raise ValueError("Mesh is not available in expected directories '/computation' or '/scatterer/geometry', and no 'semi-analytical' keyword is found in 'keywords' attribute of '/computation'.")
 
         # CHECK KEYWORDS:
         if "keywords" in f.attrs:
-            if f["tmatrix"][...].ndim == 3:
-                tmat = f["tmatrix"][0]
-            else:
-                tmat = f["tmatrix"][...]
+            if tmat.ndim == 3:
+                tmat = tmat[0]
             if "czinfinity" in f.attrs["keywords"]:
                 tol = czinf(tmat, l, m, p)
                 print(
@@ -492,7 +622,7 @@ def validate_hdf5_file(filepath):
                         print(
                             f"The object is claimed mirror symmetric with respect to xz plane with a tolerance of {tol}, which is half of the ratio of squared norm of the differences to the sum of squared norms of original and transformed matrix"
                         )
-        return False
+        return True
 
 
 def validate_hdf5_directory(directory):
@@ -502,6 +632,7 @@ def validate_hdf5_directory(directory):
             if file.endswith(".h5") or file.endswith(".hdf5"):
                 filepath = os.path.join(root, file)
                 validate_hdf5_file(filepath)
+    print("Validation of all files in the directiry succeeded")
 
 
 def main():
@@ -512,11 +643,15 @@ def main():
     args = parser.parse_args()
     path = args.path
     if os.path.isfile(path):
+        if not path.endswith(".h5"):
+            raise ValueError("Only .h5 files are supported.")
+        if not path.endswith(".tmat.h5"):
+            print("Please consider using .tmat.h5 extension for T-matrix files that comply with the standard.")
         validate_hdf5_file(path)
     elif os.path.isdir(path):
         validate_hdf5_directory(path)
     else:
-        print("Invalid path. Please provide a valid HDF5 file or directory.")
+        raise ValueError("Invalid path. Please provide a valid HDF5 file or directory.")
 
 
 LENGTHS = {
