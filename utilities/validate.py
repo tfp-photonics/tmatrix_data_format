@@ -554,7 +554,7 @@ def validate_hdf5_file(filepath):
             ):
                 for group_name in f.keys():
                     if "scatterer" in group_name: 
-                        if not any("mesh" in key for key in f[group_name].keys()):  
+                        if not any("mesh" in key for key in f[f"{group_name}/geometry"].keys()):  
                             raise ValueError("Mesh is not available in expected directories '/computation' or '/scatterer/geometry', and no 'semi-analytical' keyword is found in 'keywords' attribute of '/computation'.")
 
         # CHECK KEYWORDS:
