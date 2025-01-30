@@ -8,6 +8,11 @@ import sys
 import re
 
 
+def matlab_compat(name):
+    if isinstance(name, np.ndarray):
+        name = name.item()
+    return name
+
 def metric(t, tnew):
     return (
         0.5
@@ -545,6 +550,7 @@ def validate_hdf5_file(filepath):
             ltmat_match(tmat, l_incident, l_scattered)
 
         # CHECK MESH PRESENCE
+        scatterer_groups = [group_name for group_name in f.keys() if "scatterer" in group_name]
         if "keywords" in f["computation"].attrs:
             if "semi-analytical" in f["computation"].attrs["keywords"]:
                 pass
@@ -552,11 +558,22 @@ def validate_hdf5_file(filepath):
             if not any(
                 "mesh" in key for key in f["computation"].keys()
             ):
-                for group_name in f.keys():
-                    if "scatterer" in group_name: 
-                        if not any("mesh" in key for key in f[f"{group_name}/geometry"].keys()):  
-                            raise ValueError("Mesh is not available in expected directories '/computation' or '/scatterer/geometry', and no 'semi-analytical' keyword is found in 'keywords' attribute of '/computation'.")
+                for group_name in scatterer_groups:
+                    if not any("mesh" in key for key in f[f"{group_name}/geometry"].keys()):  
+                        raise ValueError("Mesh is not available in expected directories '/computation' or '/scatterer/geometry', and no 'semi-analytical' keyword is found in 'keywords' attribute of '/computation'.")
+        #CHECK SHAPE PARAMETERS CORRESPONDENCE
+        for group_name in scatterer_groups:
+            if "shape" in f[f"{group_name}/geometry"].attrs.keys():
+                shape = matlab_compat(f[f"{group_name}/geometry"].attrs["shape"])
+                if shape not in GEOMETRY_PARAMS.keys():
+                    raise ValueError(f"Shape {shape} is not one of the primitive shapes")
+                else:
+                    for key in  f[f"{group_name}/geometry"]:
+                        if "mesh" not in key:
+                            if key not in GEOMETRY_PARAMS[shape]:
+                                raise ValueError(f"Parameter {key} is not expected to describe the geometry {shape}. The expected parameters are: {', '.join(GEOMETRY_PARAMS[shape])}")
 
+        
         # CHECK KEYWORDS:
         if "keywords" in f.attrs:
             if tmat.ndim == 3:
@@ -631,9 +648,12 @@ def validate_hdf5_directory(directory):
         for file in files:
             if file.endswith(".h5") or file.endswith(".hdf5"):
                 filepath = os.path.join(root, file)
-                validate_hdf5_file(filepath)
-    print("Validation of all files in the directiry succeeded")
-
+                try:
+                    validate_hdf5_file(filepath)
+                    print(f"Validation of {filepath} succeeded")
+                except Exception as e: 
+                    print(f"Validation of {filepath} failed: {e}")
+    print("Validation of all files in the directory is finished")
 
 def main():
     parser = argparse.ArgumentParser(description="Validate HDF5 files.")
@@ -652,6 +672,27 @@ def main():
         validate_hdf5_directory(path)
     else:
         raise ValueError("Invalid path. Please provide a valid HDF5 file or directory.")
+
+
+GEOMETRY_PARAMS = {
+    "sphere": ("radius",),
+    "ellipsoid": ("radiusx", "radiusy", "radiusz"),
+    "superellipsoid": ("radiusx", "radiusy", "radiusz", "e_parm", "n_parm"),
+    "spheroid": ("radiusxy", "radiusz"),
+    "cylinder": ("radius", "height"),
+    "cone": ("radius_top", "radius_bottom", "height"),
+    "torus": ("radius_major", "radius_minor"),
+    "cube": ("length",),
+    "rectangular_cuboid": ("lengthx", "lengthy", "lengthz"),
+    "helix": (
+        "radius_helix",
+        "radius_wire",
+        "number_turns",
+        "pitch",
+        "handedness",
+        "termination",
+    ),
+}
 
 
 LENGTHS = {
