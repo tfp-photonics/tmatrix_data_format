@@ -412,6 +412,32 @@ GEOMETRY_PARAMS = {
         "handedness",
         "termination",
     ),
+    "ring": (
+        "radius_major", 
+        "radius_minor", 
+        "height"
+    ),
+    "convex_polyhedron": ("points",), 
+    "pyramid": (
+        "n_edges", 
+        "radius", 
+        "height", 
+        "angle", 
+        "apex_shift"
+        ),
+    "regular_prism": (
+        "n_edges", 
+        "radius", 
+        "height", 
+        "shift"
+    ),
+    "wedge": (
+        "lengthx", 
+        "lengthy", 
+        "lengthz", 
+        "deltax",
+        "deltay"
+    )
 }
 
 

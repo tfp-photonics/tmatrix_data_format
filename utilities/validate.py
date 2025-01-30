@@ -569,7 +569,7 @@ def validate_hdf5_file(filepath):
                     raise ValueError(f"Shape {shape} is not one of the primitive shapes")
                 else:
                     for key in  f[f"{group_name}/geometry"]:
-                        if "mesh" not in key:
+                        if ("mesh"  not in key) & ("position"  not in key)  :
                             if key not in GEOMETRY_PARAMS[shape]:
                                 raise ValueError(f"Parameter {key} is not expected to describe the geometry {shape}. The expected parameters are: {', '.join(GEOMETRY_PARAMS[shape])}")
 
@@ -644,10 +644,13 @@ def validate_hdf5_file(filepath):
 
 def validate_hdf5_directory(directory):
     print(f"Validate files in directory {directory}")
-    for root, dirs, files in os.walk(directory):
+    #for root, dirs, files in os.walk(directory):
+    files = os.listdir(directory)
+    if True:
         for file in files:
             if file.endswith(".h5") or file.endswith(".hdf5"):
-                filepath = os.path.join(root, file)
+                #filepath = os.path.join(root, file)
+                filepath = directory+file
                 try:
                     validate_hdf5_file(filepath)
                     print(f"Validation of {filepath} succeeded")
@@ -673,7 +676,6 @@ def main():
     else:
         raise ValueError("Invalid path. Please provide a valid HDF5 file or directory.")
 
-
 GEOMETRY_PARAMS = {
     "sphere": ("radius",),
     "ellipsoid": ("radiusx", "radiusy", "radiusz"),
@@ -692,8 +694,33 @@ GEOMETRY_PARAMS = {
         "handedness",
         "termination",
     ),
+    "ring": (
+        "radius_major", 
+        "radius_minor", 
+        "height"
+    ),
+    "convex_polyhedron": ("points",), 
+    "pyramid": (
+        "n_edges", 
+        "radius", 
+        "height", 
+        "angle", 
+        "apex_shift"
+        ),
+    "regular_prism": (
+        "n_edges", 
+        "radius", 
+        "height", 
+        "shift"
+    ),
+    "wedge": (
+        "lengthx", 
+        "lengthy", 
+        "lengthz", 
+        "deltax",
+        "deltay"
+    )
 }
-
 
 LENGTHS = {
     "ym": 1e-24,
