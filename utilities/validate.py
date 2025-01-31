@@ -551,9 +551,9 @@ def validate_hdf5_file(filepath):
 
         # CHECK MESH PRESENCE
         scatterer_groups = [group_name for group_name in f.keys() if "scatterer" in group_name]
-        if "keywords" in f["computation"].attrs:
-            if "semi-analytical" in f["computation"].attrs["keywords"]:
-                pass
+        keywords = f["computation"].attrs.get("keywords", None) 
+        if "semi-analytical" in keywords:
+            pass     
         else:
             if not any(
                 "mesh" in key for key in f["computation"].keys()
@@ -561,7 +561,8 @@ def validate_hdf5_file(filepath):
                 for group_name in scatterer_groups:
                     if not any("mesh" in key for key in f[f"{group_name}/geometry"].keys()):  
                         raise ValueError("Mesh is not available in expected directories '/computation' or '/scatterer/geometry', and no 'semi-analytical' keyword is found in 'keywords' attribute of '/computation'.")
-        #CHECK SHAPE PARAMETERS CORRESPONDENCE
+  
+        # CHECK SHAPE PARAMETERS CORRESPONDENCE
         for group_name in scatterer_groups:
             if "shape" in f[f"{group_name}/geometry"].attrs.keys():
                 shape = matlab_compat(f[f"{group_name}/geometry"].attrs["shape"])
@@ -572,7 +573,18 @@ def validate_hdf5_file(filepath):
                         if ("mesh"  not in key) & ("position"  not in key)  :
                             if key not in GEOMETRY_PARAMS[shape]:
                                 raise ValueError(f"Parameter {key} is not expected to describe the geometry {shape}. The expected parameters are: {', '.join(GEOMETRY_PARAMS[shape])}")
-
+                            if key not in no_unit_param:
+                                if ("unit" not in f[f"{group_name}/geometry"].attrs.keys()):
+                                    if ("unit" not in f[f"{group_name}/geometry/{key}"].attrs.keys()):
+                                        raise ValueError(f"Parameter '{key}' requires a 'unit' attribute, but it was not specified in either the parameter attribute or the geometry attribute.")
+                                    else:
+                                        unit = matlab_compat(f[f"{group_name}/geometry/{key}"].attrs["unit"])
+                                        if unit not in LENGTHS.keys():
+                                            raise ValueError(f"Unit {unit} is not an accepted unit.") 
+                                else:
+                                    unit = matlab_compat(f[f"{group_name}/geometry"].attrs["unit"])
+                                    if unit not in LENGTHS.keys():
+                                        raise ValueError(f"Unit {unit} is not an accepted unit.") 
         
         # CHECK KEYWORDS:
         if "keywords" in f.attrs:
@@ -675,7 +687,7 @@ def main():
         validate_hdf5_directory(path)
     else:
         raise ValueError("Invalid path. Please provide a valid HDF5 file or directory.")
-
+no_unit_param = ["e_parm", "n_parm", "number_turns", "handedness", "termination", "n_edges", "angle"]
 GEOMETRY_PARAMS = {
     "sphere": ("radius",),
     "ellipsoid": ("radiusx", "radiusy", "radiusz"),
