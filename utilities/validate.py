@@ -551,7 +551,7 @@ def validate_hdf5_file(filepath):
 
         # CHECK MESH PRESENCE
         scatterer_groups = [group_name for group_name in f.keys() if "scatterer" in group_name]
-        keywords = f["computation"].attrs.get("keywords", None) 
+        keywords = f["computation"].attrs.get("keywords", "") 
         if "semi-analytical" in keywords:
             pass     
         else:
