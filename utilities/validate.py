@@ -1,7 +1,5 @@
 import h5py
 import numpy as np
-import scipy
-import matplotlib.pyplot as plt
 import argparse
 import os
 import sys
@@ -264,15 +262,14 @@ def mirrorxz(tmats, js, ms, taus, js_out=None, ms_out=None, taus_out=None):
 
 
 def mirroryz(tmats, js, ms, taus,  js_out=None, ms_out=None, taus_out=None):
+    import quaternionic
+    import spherical
     if js_out is None:
         ms_out = ms
         js_out = js
         taus_out = taus
     N_J = np.array([js.max(), js_out.max()]).max()
-    import quaternionic
-    import spherical
-
-    wigner = spherical.Wigner(N_J + 1)  # WHY +!
+    wigner = spherical.Wigner(N_J + 1)  # +!
     R = quaternionic.array.from_euler_angles(0, np.pi / 2, 0)
     D = wigner.D(
         R
@@ -569,8 +566,18 @@ def validate_hdf5_file(filepath):
                 if shape not in GEOMETRY_PARAMS.keys():
                     raise ValueError(f"Shape {shape} is not one of the primitive shapes")
                 else:
+                    add_param = ["euler_angles", "expansion_center", "position"]
                     for key in  f[f"{group_name}/geometry"]:
-                        if ("mesh"  not in key) & ("position"  not in key)  :
+                        if key in add_param:
+                            prm = f[f"{group_name}/geometry/{key}"][...]
+                            actual_shape = prm.flatten().shape
+                            expected_shape = (3,)
+                            if actual_shape != expected_shape:
+                                raise ValueError(
+                                    f"Dataset '{key}' has wrong shape: "
+                                    f"expected {expected_shape}, got {actual_shape}"
+                                )                           
+                        if ("mesh"  not in key) & (key not in add_param):
                             if key not in GEOMETRY_PARAMS[shape]:
                                 raise ValueError(f"Parameter {key} is not expected to describe the geometry {shape}. The expected parameters are: {', '.join(GEOMETRY_PARAMS[shape])}")
                             if key not in no_unit_param:
@@ -585,7 +592,15 @@ def validate_hdf5_file(filepath):
                                     unit = matlab_compat(f[f"{group_name}/geometry"].attrs["unit"])
                                     if unit not in LENGTHS.keys():
                                         raise ValueError(f"Unit {unit} is not an accepted unit.") 
-        
+        # CHECK FORMAT VERSION
+        dformat = "/storage_format_version"
+        if dformat not in matlab_compat(f.attrs.keys()):
+            raise ValueError(f"Missing required file attribute: {dformat}")
+        elif "v1" not in matlab_compat(f.attrs[dformat]):
+            raise ValueError(
+                f"Unsupported storage_data_format attribute '{f.attrs[dformat]}'; currently only version 'v1' exists."
+            )
+
         # CHECK KEYWORDS:
         if "keywords" in f.attrs:
             if tmat.ndim == 3:
