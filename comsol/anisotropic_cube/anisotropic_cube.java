@@ -20,7 +20,7 @@ public class anisotropic_cube {
     model.param("par2").set("r_decomp", "150[nm]", "Radius of the decomposition");
     model.param("par2").set("r_domain", "200[nm]", "Radius of the domain");
     model.param("par2").set("d_pml", "1000[nm]", "Thickness PML");
-    model.param("par2").set("r_obj", "100[nm]", "Radius of the object");
+    model.param("par2").set("r_obj", "100[nm]", "Sidelength of the object");
     model.param().label("Parameters Decomposition");
     model.param("par2").label("Parameters Geometry");
 

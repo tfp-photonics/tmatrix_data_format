@@ -339,7 +339,7 @@ public class sphere_simple {
     model.study("std1").feature("param3").set("plistarr", new String[] {"1, -1"});
     model.study("std1").feature("param3").set("punit", new String[] {""});
     model.study("std1").feature("freq").set("punit", "THz");
-    model.study("std1").feature("freq").set("plist", "range(400, 1, 750)");
+    model.study("std1").feature("freq").set("plist", "range(400, 350, 750)");
     model.study("std1").feature("freq").set("plot", false);
     model.study("std1").feature("freq").set("ngen", 5);
     model.study("std2").feature("param").label("Parametric Sweep l_out");
@@ -359,7 +359,7 @@ public class sphere_simple {
     model.study("std2").feature("param4").set("plistarr", new String[] {"1, -1"});
     model.study("std2").feature("param4").set("punit", new String[] {""});
     model.study("std2").feature("freq").set("punit", "THz");
-    model.study("std2").feature("freq").set("plist", "range(400, 1, 750)");
+    model.study("std2").feature("freq").set("plist", "range(400, 350, 750)");
     model.study("std2").feature("freq").set("preusesol", "no");
 
     model.result().table("tbl1").set("storetable", "onfile");

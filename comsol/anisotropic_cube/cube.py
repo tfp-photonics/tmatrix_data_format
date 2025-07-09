@@ -13,11 +13,25 @@ import comsol_tools
 def run():
     working_dir = "."
     comsolname = "anisotropic_cube"
+    java_file = f"{comsolname}.java"
     material_names = ["Air, Vacuum", "Custom"]
     material_descriptions = ["", ""]
     material_keywords = ["nondispersive", "nondispersive, anisotropic"]
-    epsilons = [1, np.array([[3.61, 0, 0], [0, 4, 0], [0, 0, 4.41]])]
+    epsilons = comsol_tools.read_eps(java_file)
     mu = [1, 1]
+    pnames = [
+        "Thickness PML",
+        "Radius of the decomposition",
+        "Radius of the domain",
+        "Sidelength of the object"   
+    ]
+    pvals = comsol_tools.read_param(java_file, pnames)
+    length, length_unit = pvals.pop("Sidelength of the object")
+    units = [unit for _, unit in pvals.values()]
+    unique_units = set(units)
+    if len(unique_units) == 1:
+        pvals = {desc: val for desc, (val, _) in pvals.items()}
+
     (
         tmats,
         _,
@@ -47,7 +61,7 @@ def run():
             fobj,
             tmatrices=tmats,
             name="Cube anisotropic",
-            description=f"An example of an anisotropic cube at {len(freqs)} frequencies.",
+            description=f"A custom anisotropic cube in air at {len(freqs)} frequencies.",
             keywords="mirrorxyz, passive, reciprocal, lossless",
             freqs=freqs,
             ftype="frequency",
@@ -90,12 +104,12 @@ def run():
                     mu=mu
                 )
         fobj.create_group(f"{scatname}/geometry")
-        fobj[f"{scatname}/geometry"].attrs["unit"] = "nm"
+        fobj[f"{scatname}/geometry"].attrs["unit"] = length_unit
         tools.geometry_shape(
             fobj[f"{scatname}/geometry"],
             shape="cube",
-            params={"length": 100},
-            meshfile=None,
+            params={"length": length},
+            meshfile="mesh1.mphtxt",
             lunit="nm",
             working_dir=working_dir,
         )
@@ -104,7 +118,8 @@ def run():
             fobj["computation"],
             name="COMSOL",
             description="Using a custom multipole decomposition.",
-            keywords="FEM, Finite Element Method",
+            method="FEM, Finite Element Method",
+            keys=pvals,
             software=f"comsol=6.1.0.522, python={sys.version.split()[0]}, numpy={np.__version__}, h5py={h5py.__version__}",
             meshfile=None,
             # meshfile="mesh1.mphtxt",

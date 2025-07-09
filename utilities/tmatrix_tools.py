@@ -137,7 +137,7 @@ def base_data(
     funit="Hz",
     modes,
     modes_inc=None,
-    format_version="v0.0.1",
+    format_version="v1",
 ):
     fobj["tmatrix"] = np.asarray(tmatrices)
 

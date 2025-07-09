@@ -452,14 +452,13 @@ def validate_hdf5_file(filepath):
             """
             Check polarization ordering and type
             """
-            
             if (b"electric" in p) & (b"magnetic" in p):
                 # if not (p[:int(len(p)/2)] == b'electric').all() &  (p[int(len(p)/2):] == b'magnetic').all():
                 if not (p[::2] == b"electric").all() & (p[1::2] == b"magnetic").all():
                     raise ValueError(
                         f"Polarization ordering does not follow the accepted convention: 'electric' (corresponding to 'tm'), 'magnetic' (corresponding to 'te') alternating sequence"
                     )
-            elif (b"positive" in p) & ("negative" in p):
+            elif (b"positive" in p) & (b"negative" in p):
                 if not (p[::2] == b"positive").all() & (p[1::2] == b"negative").all():
                     raise ValueError(
                         "Polarization ordering does not follow the accepted convention: positive, negative alternating sequence"
@@ -593,7 +592,7 @@ def validate_hdf5_file(filepath):
                                     if unit not in LENGTHS.keys():
                                         raise ValueError(f"Unit {unit} is not an accepted unit.") 
         # CHECK FORMAT VERSION
-        dformat = "/storage_format_version"
+        dformat = "storage_format_version"
         if dformat not in matlab_compat(f.attrs.keys()):
             raise ValueError(f"Missing required file attribute: {dformat}")
         elif "v1" not in matlab_compat(f.attrs[dformat]):

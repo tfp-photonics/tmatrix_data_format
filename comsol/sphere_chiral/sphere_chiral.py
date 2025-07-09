@@ -12,13 +12,27 @@ import comsol_tools
 
 def run():
     working_dir = "."
-    comsolname = "sphere_simple"
+    comsolname = "sphere_chiral"
+    java_file = f"{comsolname}.java"
     material_names = ["Air, Vacuum", "Custom"]
     material_descriptions = ["", ""]
     material_keywords = ["nondispersive", "nondispersive, chiral"]
-    epsilons = [1, 4]
-    mu = [1, 1]
-    kappa = [0, 0.1]
+    epsilons = comsol_tools.read_eps(java_file)
+    mus = [1, 1]
+    kappas = [0, 0.1]
+    pnames = [
+        "Thickness PML",
+        "Radius of the decomposition",
+        "Radius of the domain",
+        "Radius of the object"   
+    ]
+    pvals = comsol_tools.read_param(java_file, pnames)
+    radius, radius_unit = pvals.pop("Radius of the object")
+    units = [unit for _, unit in pvals.values()]
+    unique_units = set(units)
+    if len(unique_units) == 1:
+        pvals = {desc: val for desc, (val, _) in pvals.items()}
+
     (
         tmats,
         _,
@@ -48,8 +62,8 @@ def run():
             fobj,
             tmatrices=tmats,
             name="Chiral sphere",
-            description=f"A simple example of a single sphere at {len(freqs)} frequencies.",
-            keywords="czinfinity, mirrorxyz, passive, reciprocal, lossless",
+            description=f"A sphere of custom chiral material with radius {radius} nm in air embedding at {len(freqs)} frequencies.",
+            keywords="czinfinity, mirrorxyz, passive, reciprocal, lossless, chiral",
             freqs=freqs,
             ftype="frequency",
             funit=funit,
@@ -62,9 +76,9 @@ def run():
             material_names,
             material_descriptions,
             material_keywords,
-            epsilon,
-            mu,
-            kappa
+            epsilons,
+            mus,
+            kappas
         )):
             if index == 0:
                 fobj.create_group(f"embedding")
@@ -93,22 +107,24 @@ def run():
                     kappa=kappa
                 )
         fobj.create_group(f"{scatname}/geometry")
-        fobj[f"{scatname}/geometry"].attrs["unit"] = "nm"
+        fobj[f"{scatname}/geometry"].attrs["unit"] = radius_unit
         tools.geometry_shape(
             fobj[f"{scatname}/geometry"],
             shape="sphere",
-            params="radius",
-            meshfile=None,
-            lunit="nm",
+            params={"radius": radius},
+            meshfile="mesh1.mphtxt",
+            lunit=radius_unit,
             working_dir=working_dir,
         )
         fobj.create_group("computation/files")
         tools.computation_data(
             fobj["computation"],
             name="COMSOL",
-            description="Using a custom multipole decomposition.",
-            keywords="FEM, Finite Element Method",
-            software=f"comsol=6.1.0.522, python={sys.version.split()[0]}, numpy={np.__version__}, h5py={h5py.__version__}",
+            description="Using a custom multipole decomposition. Exploiting rotational symmetry of the object.",
+            keywords="",
+            method="FEM, Finite Element Method",
+            keys=pvals,
+            software=f"comsol=6.1.0.522,  python={sys.version.split()[0]}, numpy={np.__version__}, h5py={h5py.__version__}",
             meshfile=None,
             # meshfile="mesh1.mphtxt",
             
