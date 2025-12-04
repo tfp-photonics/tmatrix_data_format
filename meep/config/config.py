@@ -56,6 +56,7 @@ class Config(PersitableDataClass):
 
     def __post_init__(self):
         Path(self.path).mkdir(parents=True, exist_ok=True)
+        Path(self.path_output).mkdir(parents=True, exist_ok=True)
         object.__setattr__(self, "object_size", np.asarray(self.object_size))
         if self.start_geometry is None:
             if c.shape == "sphere":

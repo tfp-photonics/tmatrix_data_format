@@ -96,14 +96,10 @@ def sphere() -> None:
         c.params["radius"],
         [treams.Material(c.material), treams.Material(c.eps_embedding)],
     )
-    t_treams = t_treams.expand(treams.SphericalWaveBasis.default(c.l_max))
     t_treams = t_treams.changepoltype()
-
-    t = t[len(t) // 2, : t_treams.shape[-2], : t_treams.shape[-1]]
-    print(t_treams[0, 0], t[0, 0])
-    plot_me_vs_treams(t, t_treams, c.path_output)
+    plot_me_vs_treams(t, t_treams, c.path_output) # picks the central frequency of the meep T-matrix
     delta_treams_vs_me(t, t_treams)
 
 
 if __name__ == "__main__":
-    cyl()
+    sphere()
