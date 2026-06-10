@@ -40,15 +40,7 @@ class Config(PersitableDataClass):
     params : list[dict] | dict = field(default_factory=lambda: {"radius":0.5}) 
     material: list[complex] | complex = 1.15
     positions: list[float] = field(default_factory=lambda: [0, 0, 0])
-    start_geometry: list[mp.GeometricObject] | NDArray = field(
-        default_factory=lambda: [
-            mp.Sphere(
-                0.5,
-                center=mp.Vector3(),
-                material=mp.Medium(epsilon=1.15),
-            )
-        ]
-    )
+    start_geometry: list[mp.GeometricObject] | NDArray | None = None
     continue_opt_iterations: bool = False
     opt_iterations: int = 1
     opt_eps_min: float = None
@@ -59,19 +51,27 @@ class Config(PersitableDataClass):
         Path(self.path_output).mkdir(parents=True, exist_ok=True)
         object.__setattr__(self, "object_size", np.asarray(self.object_size))
         if self.start_geometry is None:
-            if c.shape == "sphere":
-                self.start_geometry = mp.Sphere(
-                    c.params["radius"],
-                    center=mp.Vector3(),
-                    material=mp.Medium(epsilon=c.material),
-                )
-            elif c.shape == "cylinder":
-                self.start_geometry = mp.Cylinder(
-                    radius=c.params["radius"],
-                    height=c.params["height"],
-                    center=mp.Vector3(),
-                    material=mp.Medium(epsilon=c.material)
-                )        
+            if self.shape == "sphere":
+                geom = [
+                    mp.Sphere(
+                        self.params["radius"],
+                        center=mp.Vector3(),
+                        material=mp.Medium(epsilon=self.material),
+                    )
+                ]
+            elif self.shape == "cylinder":
+                geom = [
+                    mp.Cylinder(
+                        radius=self.params["radius"],
+                        height=self.params["height"],
+                        center=mp.Vector3(),
+                        material=mp.Medium(epsilon=self.material),
+                    )
+                ]
+            else:
+                raise ValueError(f"Unknown shape: {self.shape}")
+
+            object.__setattr__(self, "start_geometry", geom)      
         if isinstance(self.start_geometry, list):
             object.__setattr__(
                 self,

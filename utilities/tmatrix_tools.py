@@ -455,9 +455,10 @@ def geometry_shape(
 ):
 
     _name_descr_kw(fobj, name, description, keywords)
-    for param in GEOMETRY_PARAMS[shape]:
-        fobj[param] = params[param]
-    fobj.attrs["shape"] = str(shape)
+    if shape is not None:
+        for param in GEOMETRY_PARAMS[shape]:
+            fobj[param] = params[param]
+        fobj.attrs["shape"] = str(shape)
     if meshfile is not None:
         mesh_data(fobj, meshfile, lunit)
         if isinstance(meshfile, str):

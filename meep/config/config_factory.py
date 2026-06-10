@@ -61,7 +61,7 @@ def get_test_config() -> Config:
     c = Config(
         path="./meep_input/",
         path_output="./output/",
-        resolution=10,
+        resolution=20,
         sim_amount_mult=2,
         l_max=2,
         material=1.15,
