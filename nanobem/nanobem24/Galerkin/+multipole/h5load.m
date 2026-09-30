@@ -23,18 +23,20 @@ function [ tsol, tmat ] = h5load( finp )
 %         +-- relative_permittivity
 %         +-- relative_permeability
 
-%  load modes 
+%  load modes
 l = double( h5read( finp, '/modes/l' ) );
 m = double( h5read( finp, '/modes/m' ) );
 pol = h5read( finp, '/modes/polarization' );
 %  index to TE and TM modes, same ordering for TE and TM modes
 te = find( pol == "te" | pol == "magnetic" );
 tm = find( pol == "tm" | pol == "electric" );
-[ ~, ind ] = ismember( [ l( te ), m( te ) ], [ l( tm ), m( tm ) ], 'rows' ); 
+[ ~, ind ] = ismember( [ l( te ), m( te ) ], [ l( tm ), m( tm ) ], 'rows' );
 te = te( ind );
 %  load T-matrix data
 data = h5read( finp, '/tmatrix' );
 data = data.r + 1i * data.i;
+%  Works for both 2D and 3D datasets.
+data = permute( data, [ 2, 1, 3 ] );
 
 %  frequency, wavelength or wavenumber in FINP ?
 info = h5info( finp );
@@ -58,7 +60,7 @@ name2 = [ "mufun", "epsfun" ];
 for i = 1 : 2
   try
     %  load material data
-    name = h5info( finp, '/embedding' ).Value{ 1 };  
+    name = h5info( finp, '/embedding' ).Value{ 1 };
     val = h5read( finp, name + name1( i ) );
     val = val.r + 1i * val.i;
     %  set material property

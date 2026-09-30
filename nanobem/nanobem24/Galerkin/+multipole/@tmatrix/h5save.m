@@ -22,10 +22,10 @@ fid = H5F.create( fout );
 
 for name = [ "name", "description", "keywords" ]
   if info.( name ) ~= ""
-    h5writeatt( fout, '/', name, info.( name ) );  
+    h5writeatt( fout, '/', name, info.( name ) );
   end
 end
-h5writeatt( fout, '/', 'storage_format_version', "v1" ); 
+h5writeatt( fout, '/', 'storage_format_version', "v1" );
 %  write wavenumber to H5 file
 k0 = vertcat( obj.k0 );
 h5create( fout, '/angular_vacuum_wavenumber', numel( k0 ) );
@@ -48,11 +48,15 @@ ind2 = sortrows( index( multipole.base( max( ind1( :, 1 ) ) ), [ 1, 2 ] ) );
 [ ~, i1 ] = ismember( ind2, ind1, 'rows' );
 %  write T-matrix data
 tmat = full( convert( obj, 'to_h5' ) );
-h5complex_write( fid, 'tmatrix', tmat( i1, i1, : ) );
-%  write angular degrees 
+tmat = tmat(i1, i1, :);
+
+tmat = permute(tmat, [2, 1, 3]);
+
+h5complex_write(fid, 'tmatrix', tmat);
+%  write angular degrees
 h5create( fout, '/modes/l', size( ind2, 1 ), 'DataType', 'int64' );
 h5write( fout, '/modes/l', int64( ind2( :, 1 ) ) );
-%  write angular orders 
+%  write angular orders
 h5create( fout, '/modes/m', size( ind2, 1 ), 'DataType', 'int64' );
 h5write( fout, '/modes/m', int64( ind2( :, 2 ) ) );
 %  write polarization
@@ -102,13 +106,13 @@ if ~isempty( info.matname )
 end
 if ~isempty( info.matdescription )
   h5writeatt( fout, '/embedding', 'description', info.matdescription( 1 ) );
-end    
+end
 H5G.close( gid );
 
 %  loop over remaining materials
 for it = 2 : numel( mat )
   name = [ '/', convertStringsToChars( info.matgroupname( it ) ) ];
-  
+
   H5G.create( fid, name, plist, plist, plist );
   %  write attributes to scatterer
   if ~isempty( info.scatname )
@@ -116,21 +120,21 @@ for it = 2 : numel( mat )
   end
   if ~isempty( info.scatdescription )
     h5writeatt( fout, name, 'description', info.scatdescription( it ) );
-  end    
-    
+  end
+
   %  write permeability and permittivity to material group
   gid = H5G.create(fid, [ name, '/material' ], plist, plist, plist );
   h5complex_write( gid, 'relative_permeability',  mu{ it }, 'vector' );
   h5complex_write( gid, 'relative_permittivity', eps{ it }, 'vector' );
   H5G.close( gid );
-   
+
   %  write attributes to material group
   if ~isempty( info.matname )
     h5writeatt( fout, [ name, '/material' ], 'name', info.matname( it ) );
   end
   if ~isempty( info.matdescription )
     h5writeatt( fout, [ name, '/material' ], 'description', info.matdescription( it ) );
-  end    
+  end
 end
 
 %%
@@ -146,10 +150,14 @@ end
 H5G.create( fid, '/computation', plist, plist, plist );
 [ v1, v2, v3 ] = H5.get_libversion;
 ver = [ num2str( v1 ), '.', num2str( v2 ), '.', num2str( v3 ) ];
-software = append( "nanobem24, ", "Matlab=" , ...
-  convertCharsToStrings( version( '-release' ) ), ", hdf5=", ver );
+software = append( ...
+  "nanobem=24, ", ...
+  "Matlab=", convertCharsToStrings( version( '-release' ) ), ...
+  ", hdf5=", ver, ...
+  ", tmatrix_data_format=v1.0.0" );
 h5writeatt( fout, '/computation', 'software', software );
 h5writeatt( fout, '/computation', 'method', "BEM, Boundary Element Method" );
+h5writeatt( fout, '/computation', 'name', "nanobem" );
 
 %  write contents of additional files
 for i = 1 : numel( info.files )
@@ -157,10 +165,15 @@ for i = 1 : numel( info.files )
   finp = fopen( info.files( i ) );
   str = convertCharsToStrings( fscanf( finp, '%c' ) );
   fclose( finp );
+
   %  write contents to H5 file
-  name = sprintf( '/computation/file%i', i );
+  name = sprintf( '/computation/files/file%i', i );
   h5create( fout, name, 1, 'DataType', 'string' );
   h5write( fout, name, str );
+
+  %  store original filename
+  [ ~, filename, extension ] = fileparts( info.files( i ) );
+  h5writeatt( fout, name, 'name', [ filename, extension ] );
 end
 
 %  write mesh to scatterers or /computation
